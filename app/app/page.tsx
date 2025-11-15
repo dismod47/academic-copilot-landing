@@ -139,10 +139,15 @@ export default function AppPage() {
   const loadEvents = async () => {
     try {
       const courseId = selectedCourse === 'all' ? '' : selectedCourse;
-      const url = courseId ? `/api/events?courseId=${courseId}` : '/api/events';
+      const url = courseId && courseId !== 'all' ? `/api/events?courseId=${courseId}` : '/api/events';
+      
+      console.log('[AppPage] Loading events, selectedCourse:', selectedCourse, 'url:', url);
       
       const response = await fetch(url);
       const data = await response.json();
+      
+      console.log('[AppPage] Load events response:', data);
+      console.log('[AppPage] Number of events loaded:', data.events?.length || 0);
       
       if (data.events) {
         // Transform database events to match app types
@@ -156,7 +161,11 @@ export default function AppPage() {
           weightPercent: e.weightPercent,
         }));
         
+        console.log('[AppPage] Transformed events:', transformedEvents);
         setEvents(transformedEvents);
+      } else {
+        console.log('[AppPage] No events in response');
+        setEvents([]);
       }
     } catch (error) {
       console.error('[AppPage] Failed to load events:', error);
@@ -226,9 +235,17 @@ export default function AppPage() {
               }),
             });
 
+            const eventsResponseData = await eventsResponse.json();
+            console.log('[AppPage] Events save response:', eventsResponseData);
+            
             if (eventsResponse.ok) {
-              console.log('[AppPage] Saved calendar events to database');
-              await loadEvents(); // Reload events
+              console.log('[AppPage] Saved calendar events to database, response events:', eventsResponseData.events?.length || 0);
+              // Wait a bit to ensure database commit, then reload
+              setTimeout(() => {
+                loadEvents();
+              }, 500);
+            } else {
+              console.error('[AppPage] Failed to save events:', eventsResponseData);
             }
           }
         } catch (error) {
