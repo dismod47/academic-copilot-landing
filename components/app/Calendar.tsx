@@ -193,13 +193,12 @@ export default function Calendar({
           console.log('[Calendar] Date cell clicked:', dateString, 'isSameMonth:', isSameMonth(day, monthStart));
           console.log('[Calendar] onAddEvent is:', typeof onAddEvent);
           
-          if (isSameMonth(day, monthStart)) {
-            console.log('[Calendar] Calling onAddEvent with:', dateString);
-            if (typeof onAddEvent === 'function') {
-              onAddEvent(dateString);
-            } else {
-              console.error('[Calendar] onAddEvent is not a function!', onAddEvent);
-            }
+          // Allow clicking any date to add an event (not just current month)
+          console.log('[Calendar] Calling onAddEvent with:', dateString);
+          if (typeof onAddEvent === 'function') {
+            onAddEvent(dateString);
+          } else {
+            console.error('[Calendar] onAddEvent is not a function!', onAddEvent);
           }
         };
 
@@ -210,7 +209,7 @@ export default function Calendar({
             onMouseDown={() => console.log('[Calendar] Mouse down on:', dateString)}
             className={`min-h-[140px] p-2 border border-neutral-200 rounded-lg cursor-pointer transition-all ${
               !isSameMonth(day, monthStart)
-                ? 'bg-neutral-50 text-neutral-400'
+                ? 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
                 : 'bg-white hover:bg-blue-50 hover:border-blue-300'
             }`}
             style={{ position: 'relative', zIndex: 1 }}
