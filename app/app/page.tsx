@@ -5,6 +5,7 @@ import AppHeader from '@/components/app/AppHeader';
 import YourCourses from '@/components/app/YourCourses';
 import Calendar from '@/components/app/Calendar';
 import WeeklyTodoList from '@/components/app/WeeklyTodoList';
+import StudyRecommendations from '@/components/app/StudyRecommendations';
 import GradePlanner from '@/components/app/GradePlanner';
 import AssignmentDifficultyPredictor from '@/components/app/AssignmentDifficultyPredictor';
 import EventModal from '@/components/app/EventModal';
@@ -632,6 +633,7 @@ export default function AppPage() {
                   onRemoveAllEvents={handleRemoveAllEvents}
                 />
                 <WeeklyTodoList events={events} courses={courses} />
+                <StudyRecommendations events={events} courses={courses} />
               </div>
             )}
 
