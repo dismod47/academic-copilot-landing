@@ -53,8 +53,16 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('[API] Signup error:', error);
+    console.error('[API] Signup error message:', error?.message);
+    console.error('[API] Signup error stack:', error?.stack);
+    
+    // Return more detailed error in development, generic in production
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? error?.message || 'Failed to create account'
+      : 'Failed to create account';
+    
     return NextResponse.json(
-      { error: 'Failed to create account' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
