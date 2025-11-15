@@ -97,7 +97,7 @@ export default function GradePlanner() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-neutral-900 mb-2">
-          Grade Planner
+          Final Grade Calculator
         </h2>
         <p className="text-neutral-600">
           Calculate what grade you need on your final exam to reach your target grade.

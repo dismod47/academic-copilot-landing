@@ -583,7 +583,7 @@ export default function AppPage() {
                   : 'border-transparent text-neutral-600 hover:text-neutral-900'
               }`}
             >
-              Grade Planner
+              Final Grade Calculator
             </button>
             <button
               onClick={() => setActiveTab('difficulty')}

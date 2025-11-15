@@ -26,7 +26,7 @@ const slides = [
   },
   {
     title: 'Know What You Need to Get',
-    body: 'The Grade Planner tab lets you see what scores you need on upcoming assignments to hit your target grade, using the parsed grade weights from your syllabi.',
+    body: 'The Final Grade Calculator tab lets you see what scores you need on upcoming assignments to hit your target grade, using the parsed grade weights from your syllabi.',
     cta: 'Got it, let\'s start',
   },
 ];
