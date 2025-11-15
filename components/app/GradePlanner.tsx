@@ -1,394 +1,293 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Course, GradeCategory } from '@/types/app';
+import React, { useState } from 'react';
 
-interface GradePlannerProps {
-  courses: Course[];
-}
+export default function GradePlanner() {
+  const [currentGrade, setCurrentGrade] = useState<string>('');
+  const [gradeWanted, setGradeWanted] = useState<string>('');
+  const [finalWorth, setFinalWorth] = useState<string>('');
+  const [passingGrade, setPassingGrade] = useState<string>('');
 
-export default function GradePlanner({ courses }: GradePlannerProps) {
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
-  const [targetGrade, setTargetGrade] = useState<number>(90);
-  const [categories, setCategories] = useState<GradeCategory[]>([
-    {
-      id: '1',
-      name: 'Homework',
-      weight: 20,
-      currentScore: 0,
-      isCompleted: false,
-    },
-  ]);
+  const calculateGradeNeeded = () => {
+    const current = parseFloat(currentGrade);
+    const wanted = parseFloat(gradeWanted);
+    const finalWeight = parseFloat(finalWorth);
 
-  useEffect(() => {
-    console.log('[GradePlanner] Selected course changed:', selectedCourse);
-    console.log('[GradePlanner] All courses:', courses);
-    
-    if (selectedCourse) {
-      const course = courses.find(c => c.id === selectedCourse);
-      console.log('[GradePlanner] Found course:', course);
-      console.log('[GradePlanner] Grade categories:', course?.gradeCategories);
-      
-      if (course?.gradeCategories && course.gradeCategories.length > 0) {
-        console.log('[GradePlanner] Setting categories from parsed data:', course.gradeCategories);
-        setCategories(course.gradeCategories);
-      } else {
-        console.log('[GradePlanner] No grade categories, using default');
-        setCategories([
-          {
-            id: '1',
-            name: 'Homework',
-            weight: 20,
-            currentScore: 0,
-            isCompleted: false,
-          },
-        ]);
-      }
-    } else {
-      // Reset to default when no course selected
-      setCategories([
-        {
-          id: '1',
-          name: 'Homework',
-          weight: 20,
-          currentScore: 0,
-          isCompleted: false,
-        },
-      ]);
+    // Validation
+    if (isNaN(current) || isNaN(wanted) || isNaN(finalWeight)) {
+      return null;
     }
-  }, [selectedCourse, courses]);
 
-  const addCategory = () => {
-    const newId = (Math.max(...categories.map(c => parseInt(c.id)), 0) + 1).toString();
-    setCategories([
-      ...categories,
-      {
-        id: newId,
-        name: '',
-        weight: 0,
-        currentScore: 0,
-        isCompleted: false,
-      },
-    ]);
+    if (finalWeight <= 0 || finalWeight > 100) {
+      return null;
+    }
+
+    if (current < 0 || current > 100 || wanted < 0 || wanted > 100) {
+      return null;
+    }
+
+    // Calculate current points earned (before final)
+    const currentWeight = 100 - finalWeight;
+    const currentPointsEarned = (current * currentWeight) / 100;
+
+    // Calculate points needed to reach desired grade
+    const pointsNeeded = wanted - currentPointsEarned;
+
+    // Calculate grade needed on final
+    const gradeNeededOnFinal = (pointsNeeded / finalWeight) * 100;
+
+    return gradeNeededOnFinal;
   };
 
-  const removeCategory = (id: string) => {
-    setCategories(categories.filter(c => c.id !== id));
+  const calculatePassingGrade = () => {
+    const current = parseFloat(currentGrade);
+    const finalWeight = parseFloat(finalWorth);
+    const passGrade = parseFloat(passingGrade);
+
+    // Validation
+    if (isNaN(current) || isNaN(finalWeight) || isNaN(passGrade)) {
+      return null;
+    }
+
+    if (finalWeight <= 0 || finalWeight > 100) {
+      return null;
+    }
+
+    if (current < 0 || current > 100 || passGrade < 0 || passGrade > 100) {
+      return null;
+    }
+
+    // Calculate current points earned (before final)
+    const currentWeight = 100 - finalWeight;
+    const currentPointsEarned = (current * currentWeight) / 100;
+
+    // Calculate points needed to reach passing grade
+    const pointsNeeded = passGrade - currentPointsEarned;
+
+    // Calculate grade needed on final
+    const gradeNeededOnFinal = (pointsNeeded / finalWeight) * 100;
+
+    return gradeNeededOnFinal;
   };
 
-  const updateCategory = (id: string, field: keyof GradeCategory, value: any) => {
-    setCategories(
-      categories.map(c =>
-        c.id === id ? { ...c, [field]: value } : c
-      )
-    );
+  const gradeNeededForWanted = calculateGradeNeeded();
+  const gradeNeededForPassing = passingGrade ? calculatePassingGrade() : null;
+
+  const getGradeLetter = (percentage: number): string => {
+    if (percentage >= 97) return 'A+';
+    if (percentage >= 93) return 'A';
+    if (percentage >= 90) return 'A-';
+    if (percentage >= 87) return 'B+';
+    if (percentage >= 83) return 'B';
+    if (percentage >= 80) return 'B-';
+    if (percentage >= 77) return 'C+';
+    if (percentage >= 73) return 'C';
+    if (percentage >= 70) return 'C-';
+    if (percentage >= 67) return 'D+';
+    if (percentage >= 65) return 'D';
+    return 'F';
   };
 
-  const calculateResult = () => {
-    const completedCategories = categories.filter(c => c.isCompleted);
-    const remainingCategories = categories.filter(c => !c.isCompleted);
-
-    const completedTotal = completedCategories.reduce(
-      (sum, cat) => sum + (cat.currentScore * cat.weight) / 100,
-      0
-    );
-
-    const remainingWeight = remainingCategories.reduce(
-      (sum, cat) => sum + cat.weight,
-      0
-    );
-
-    if (remainingWeight === 0) {
-      return {
-        type: 'all-completed',
-        message: `All components are completed. Your current course grade is ${completedTotal.toFixed(2)}%.`,
-        currentGrade: completedTotal,
-      };
-    }
-
-    const neededAverage = (targetGrade - completedTotal) / (remainingWeight / 100);
-
-    if (neededAverage > 100) {
-      return {
-        type: 'impossible',
-        message: `To hit ${targetGrade}%, you would need ${neededAverage.toFixed(2)}% on the remaining work, which isn't realistic.`,
-        neededAverage,
-      };
-    }
-
-    if (neededAverage < 0) {
-      return {
-        type: 'already-achieved',
-        message: `You've already secured enough points to exceed your target (${targetGrade}%), even with 0% on the remaining work. Current grade: ${completedTotal.toFixed(2)}%.`,
-        currentGrade: completedTotal,
-      };
-    }
-
-    if (remainingCategories.length === 1) {
-      return {
-        type: 'single-remaining',
-        message: `You need ${neededAverage.toFixed(2)}% on ${remainingCategories[0].name} to achieve ${targetGrade}%.`,
-        neededAverage,
-      };
-    }
-
-    return {
-      type: 'multiple-remaining',
-      message: `You need an average of ${neededAverage.toFixed(2)}% across all remaining categories to achieve ${targetGrade}%.`,
-      neededAverage,
-    };
+  const isValid = (value: string): boolean => {
+    const num = parseFloat(value);
+    return !isNaN(num) && num >= 0 && num <= 100;
   };
-
-  const result = calculateResult();
-  const selectedCourseData = courses.find(c => c.id === selectedCourse);
-  const hasGradeParsing = selectedCourseData?.gradeCategories && selectedCourseData.gradeCategories.length > 0;
-
-  console.log('[GradePlanner] Render state:', { 
-    selectedCourse, 
-    selectedCourseData, 
-    hasGradeParsing,
-    categories 
-  });
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-8 shadow-sm space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+        <h2 className="text-2xl font-semibold text-neutral-900 mb-2">
           Grade Planner
         </h2>
         <p className="text-neutral-600">
-          Calculate what you need on remaining work to hit your target grade.
+          Calculate what grade you need on your final exam to reach your target grade.
         </p>
       </div>
 
-      {courses.length === 0 ? (
-        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-8 text-center">
-          <p className="text-neutral-600">
-            Add a course from the "Your Courses" tab to use the grade planner.
+      {/* Input Fields */}
+      <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="current-grade" className="block text-sm font-medium text-neutral-700">
+            Current Grade (%)
+          </label>
+          <input
+            id="current-grade"
+            type="number"
+            value={currentGrade}
+            onChange={(e) => setCurrentGrade(e.target.value)}
+            placeholder="e.g., 85"
+            min="0"
+            max="100"
+            step="0.1"
+            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-neutral-900"
+          />
+          {currentGrade && !isValid(currentGrade) && (
+            <p className="text-sm text-red-600">Please enter a number between 0 and 100</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="grade-wanted" className="block text-sm font-medium text-neutral-700">
+            Grade Wanted (%)
+          </label>
+          <input
+            id="grade-wanted"
+            type="number"
+            value={gradeWanted}
+            onChange={(e) => setGradeWanted(e.target.value)}
+            placeholder="e.g., 90"
+            min="0"
+            max="100"
+            step="0.1"
+            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-neutral-900"
+          />
+          {gradeWanted && !isValid(gradeWanted) && (
+            <p className="text-sm text-red-600">Please enter a number between 0 and 100</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="final-worth" className="block text-sm font-medium text-neutral-700">
+            What the Final is Worth (%)
+          </label>
+          <input
+            id="final-worth"
+            type="number"
+            value={finalWorth}
+            onChange={(e) => setFinalWorth(e.target.value)}
+            placeholder="e.g., 40"
+            min="0"
+            max="100"
+            step="0.1"
+            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-neutral-900"
+          />
+          {finalWorth && (parseFloat(finalWorth) <= 0 || parseFloat(finalWorth) > 100) && (
+            <p className="text-sm text-red-600">Please enter a number between 0 and 100</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="passing-grade" className="block text-sm font-medium text-neutral-700">
+            Grade Needed to Pass (%)
+            <span className="text-xs font-normal text-neutral-500 ml-2">(Optional)</span>
+          </label>
+          <input
+            id="passing-grade"
+            type="number"
+            value={passingGrade}
+            onChange={(e) => setPassingGrade(e.target.value)}
+            placeholder="e.g., 70"
+            min="0"
+            max="100"
+            step="0.1"
+            className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-neutral-900"
+          />
+          {passingGrade && !isValid(passingGrade) && (
+            <p className="text-sm text-red-600">Please enter a number between 0 and 100</p>
+          )}
+        </div>
+      </div>
+
+      {/* Results */}
+      {gradeNeededForWanted !== null && (
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-300 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+            To get {gradeWanted}% overall
+          </h3>
+          
+          {gradeNeededForWanted < 0 ? (
+            <div className="space-y-2">
+              <p className="text-lg font-bold text-green-700">
+                🎉 You've already exceeded your target!
+              </p>
+              <p className="text-neutral-700">
+                Your current grade of <strong>{currentGrade}%</strong> is already enough to achieve {gradeWanted}% overall, 
+                even if you get 0% on the final exam.
+              </p>
+            </div>
+          ) : gradeNeededForWanted > 100 ? (
+            <div className="space-y-2">
+              <p className="text-lg font-bold text-red-700">
+                ⚠️ Target not achievable
+              </p>
+              <p className="text-neutral-700">
+                You would need <strong>{gradeNeededForWanted.toFixed(2)}%</strong> on the final exam to reach {gradeWanted}% overall, 
+                which is not possible.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-blue-600">
+                  {gradeNeededForWanted.toFixed(2)}%
+                </span>
+                <span className="text-xl text-neutral-600">
+                  ({getGradeLetter(gradeNeededForWanted)})
+                </span>
+              </div>
+              <p className="text-neutral-700">
+                You need to score <strong>{gradeNeededForWanted.toFixed(2)}%</strong> on the final exam 
+                to achieve an overall grade of <strong>{gradeWanted}%</strong>.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {gradeNeededForPassing !== null && passingGrade && (
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+            To pass with {passingGrade}%
+          </h3>
+          
+          {gradeNeededForPassing < 0 ? (
+            <div className="space-y-2">
+              <p className="text-lg font-bold text-green-700">
+                ✅ You're already passing!
+              </p>
+              <p className="text-neutral-700">
+                Your current grade of <strong>{currentGrade}%</strong> is already enough to pass with {passingGrade}%, 
+                even if you get 0% on the final exam.
+              </p>
+            </div>
+          ) : gradeNeededForPassing > 100 ? (
+            <div className="space-y-2">
+              <p className="text-lg font-bold text-red-700">
+                ⚠️ Passing grade not achievable
+              </p>
+              <p className="text-neutral-700">
+                You would need <strong>{gradeNeededForPassing.toFixed(2)}%</strong> on the final exam to pass with {passingGrade}%, 
+                which is not possible.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-green-600">
+                  {gradeNeededForPassing.toFixed(2)}%
+                </span>
+                <span className="text-xl text-neutral-600">
+                  ({getGradeLetter(gradeNeededForPassing)})
+                </span>
+              </div>
+              <p className="text-neutral-700">
+                You need to score <strong>{gradeNeededForPassing.toFixed(2)}%</strong> on the final exam 
+                to pass with an overall grade of <strong>{passingGrade}%</strong>.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Info Box */}
+      {currentGrade && finalWorth && parseFloat(finalWorth) > 0 && (
+        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+          <p className="text-sm text-neutral-600">
+            <strong>Current calculation:</strong> Your current grade ({currentGrade}%) represents{' '}
+            <strong>{100 - parseFloat(finalWorth)}%</strong> of your total grade. 
+            The final exam represents <strong>{finalWorth}%</strong> of your total grade.
           </p>
         </div>
-      ) : (
-        <>
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-neutral-900">
-              Select Course
-            </label>
-            <select
-              value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-            >
-              <option value="">Choose a course...</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.name} ({course.code})
-                  {course.gradeCategories && course.gradeCategories.length > 0 
-                    ? ` - ${course.gradeCategories.length} categories` 
-                    : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedCourse && !hasGradeParsing && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <p className="text-sm text-orange-800">
-                No grade breakdown was parsed from this syllabus. You can enter it manually below.
-              </p>
-            </div>
-          )}
-
-          {selectedCourse && hasGradeParsing && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-sm text-green-800">
-                ✓ Grade breakdown loaded from syllabus ({selectedCourseData.gradeCategories?.length} categories)
-              </p>
-            </div>
-          )}
-
-          {selectedCourse && (
-            <>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-900">
-                  Target Final Grade (%)
-                </label>
-                <input
-                  type="number"
-                  value={targetGrade}
-                  onChange={(e) => setTargetGrade(Number(e.target.value))}
-                  min="0"
-                  max="100"
-                  className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-semibold text-neutral-900">
-                    Grade Breakdown
-                  </label>
-                  <button
-                    onClick={addCategory}
-                    className="px-3 py-1 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    + Add Category
-                  </button>
-                </div>
-
-                <div className="hidden md:grid md:grid-cols-12 gap-3 text-sm font-semibold text-neutral-700 pb-2 border-b border-neutral-200">
-                  <div className="col-span-4">Category Name</div>
-                  <div className="col-span-2">Weight (%)</div>
-                  <div className="col-span-2">Current Score (%)</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-2"></div>
-                </div>
-
-                <div className="space-y-3">
-                  {categories.map((category) => (
-                    <div
-                      key={category.id}
-                      className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start md:items-center p-3 md:p-0 bg-neutral-50 md:bg-transparent rounded-lg md:rounded-none border md:border-0 border-neutral-200"
-                    >
-                      <div className="md:col-span-4">
-                        <label className="block md:hidden text-xs font-semibold text-neutral-600 mb-1">
-                          Category
-                        </label>
-                        <input
-                          type="text"
-                          value={category.name}
-                          onChange={(e) =>
-                            updateCategory(category.id, 'name', e.target.value)
-                          }
-                          placeholder="e.g., Homework"
-                          className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block md:hidden text-xs font-semibold text-neutral-600 mb-1">
-                          Weight (%)
-                        </label>
-                        <input
-                          type="number"
-                          value={category.weight || ''}
-                          onChange={(e) =>
-                            updateCategory(category.id, 'weight', Number(e.target.value))
-                          }
-                          placeholder="20"
-                          min="0"
-                          max="100"
-                          className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block md:hidden text-xs font-semibold text-neutral-600 mb-1">
-                          Current Score (%)
-                        </label>
-                        <input
-                          type="number"
-                          value={category.currentScore || ''}
-                          onChange={(e) =>
-                            updateCategory(
-                              category.id,
-                              'currentScore',
-                              Number(e.target.value)
-                            )
-                          }
-                          placeholder="85"
-                          min="0"
-                          max="100"
-                          disabled={!category.isCompleted}
-                          className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm disabled:bg-neutral-100 disabled:text-neutral-400"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block md:hidden text-xs font-semibold text-neutral-600 mb-1">
-                          Status
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateCategory(
-                              category.id,
-                              'isCompleted',
-                              !category.isCompleted
-                            )
-                          }
-                          className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            category.isCompleted
-                              ? 'bg-green-100 text-green-800 border border-green-300'
-                              : 'bg-neutral-100 text-neutral-600 border border-neutral-300'
-                          }`}
-                        >
-                          {category.isCompleted ? '✓ Completed' : '○ Remaining'}
-                        </button>
-                      </div>
-
-                      <div className="md:col-span-2 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => removeCategory(category.id)}
-                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
-                          disabled={categories.length === 1}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-2 border-t border-neutral-200">
-                  <p className="text-sm text-neutral-600">
-                    Total Weight:{' '}
-                    <span
-                      className={`font-semibold ${
-                        categories.reduce((sum, cat) => sum + cat.weight, 0) === 100
-                          ? 'text-green-600'
-                          : 'text-orange-600'
-                      }`}
-                    >
-                      {categories.reduce((sum, cat) => sum + cat.weight, 0)}%
-                    </span>
-                    {categories.reduce((sum, cat) => sum + cat.weight, 0) !== 100 && (
-                      <span className="text-orange-600 ml-2 text-xs">
-                        (Should sum to 100%)
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className={`p-4 rounded-lg border-2 ${
-                  result.type === 'impossible'
-                    ? 'bg-red-50 border-red-300'
-                    : result.type === 'already-achieved'
-                    ? 'bg-green-50 border-green-300'
-                    : result.type === 'all-completed'
-                    ? 'bg-blue-50 border-blue-300'
-                    : 'bg-purple-50 border-purple-300'
-                }`}
-              >
-                <p
-                  className={`font-semibold ${
-                    result.type === 'impossible'
-                      ? 'text-red-900'
-                      : result.type === 'already-achieved'
-                      ? 'text-green-900'
-                      : result.type === 'all-completed'
-                      ? 'text-blue-900'
-                      : 'text-purple-900'
-                  }`}
-                >
-                  {result.message}
-                </p>
-              </div>
-            </>
-          )}
-        </>
       )}
     </div>
   );
