@@ -35,7 +35,9 @@ export default function YourCourses({
     name: '',
     code: '',
     color: '',
-    lectureTimes: '',
+    lectureDays: [] as string[], // Array of day names like ['monday', 'wednesday']
+    lectureStartTime: '',
+    lectureEndTime: '',
     syllabusText: '',
     syllabusFile: null as File | null,
     parseCalendar: true,
@@ -48,11 +50,45 @@ export default function YourCourses({
   const handleOpenForm = (course?: Course) => {
     if (course) {
       setEditingId(course.id);
+      // Parse lecture times if they exist
+      let lectureDays: string[] = [];
+      let lectureStartTime = '';
+      let lectureEndTime = '';
+      
+      if (course.lectureTimes) {
+        // Try to parse existing lecture times format
+        const times = course.lectureTimes.toLowerCase();
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        for (const day of dayNames) {
+          if (times.includes(day.substring(0, 3))) {
+            lectureDays.push(day);
+          }
+        }
+        
+        // Extract time range
+        const timeMatch = times.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—]\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/);
+        if (timeMatch) {
+          let [, startH, startM, startP, endH, endM, endP] = timeMatch;
+          let startHour = parseInt(startH);
+          let endHour = parseInt(endH);
+          
+          if (startP === 'pm' && startHour !== 12) startHour += 12;
+          else if (startP === 'am' && startHour === 12) startHour = 0;
+          if (endP === 'pm' && endHour !== 12) endHour += 12;
+          else if (endP === 'am' && endHour === 12) endHour = 0;
+          
+          lectureStartTime = `${startHour.toString().padStart(2, '0')}:${startM}`;
+          lectureEndTime = `${endHour.toString().padStart(2, '0')}:${endM}`;
+        }
+      }
+      
       setFormData({
         name: course.name,
         code: course.code || '',
         color: course.color,
-        lectureTimes: course.lectureTimes || '',
+        lectureDays,
+        lectureStartTime,
+        lectureEndTime,
         syllabusText: course.syllabusText || '',
         syllabusFile: null,
         parseCalendar: false,
@@ -63,7 +99,9 @@ export default function YourCourses({
         name: '',
         code: '',
         color: '',
-        lectureTimes: '',
+        lectureDays: [],
+        lectureStartTime: '',
+        lectureEndTime: '',
         syllabusText: '',
         syllabusFile: null,
         parseCalendar: true,
@@ -212,11 +250,39 @@ export default function YourCourses({
         }
       }
 
+      // Build lecture times string from form data
+      let lectureTimes: string | undefined = undefined;
+      if (formData.lectureDays.length > 0 && formData.lectureStartTime && formData.lectureEndTime) {
+        const dayNames = formData.lectureDays.map(day => {
+          const dayMap: { [key: string]: string } = {
+            'sunday': 'Sunday',
+            'monday': 'Monday',
+            'tuesday': 'Tuesday',
+            'wednesday': 'Wednesday',
+            'thursday': 'Thursday',
+            'friday': 'Friday',
+            'saturday': 'Saturday',
+          };
+          return dayMap[day] || day;
+        });
+        
+        // Convert 24-hour format back to 12-hour for display
+        const [startH, startM] = formData.lectureStartTime.split(':').map(Number);
+        const [endH, endM] = formData.lectureEndTime.split(':').map(Number);
+        
+        const startHour12 = startH > 12 ? startH - 12 : (startH === 0 ? 12 : startH);
+        const endHour12 = endH > 12 ? endH - 12 : (endH === 0 ? 12 : endH);
+        const startPeriod = startH >= 12 ? 'PM' : 'AM';
+        const endPeriod = endH >= 12 ? 'PM' : 'AM';
+        
+        lectureTimes = `${dayNames.join(' ')}, ${startHour12}:${startM.toString().padStart(2, '0')} ${startPeriod} - ${endHour12}:${endM.toString().padStart(2, '0')} ${endPeriod}`;
+      }
+
       const courseData = {
         name: formData.name,
         code: formData.code.trim() || undefined,
         color: formData.color,
-        lectureTimes: formData.lectureTimes.trim() || undefined,
+        lectureTimes,
         syllabusText: syllabusText,
       };
 
@@ -235,14 +301,14 @@ export default function YourCourses({
           courseData, 
           syllabusText,
           shouldParseCalendar,
-          formData.lectureTimes.trim() || undefined
+          lectureTimes
         );
       } else {
         await onAddCourse(
           courseData,
           syllabusText,
           shouldParseCalendar,
-          formData.lectureTimes.trim() || undefined
+          lectureTimes
         );
       }
 
@@ -252,7 +318,7 @@ export default function YourCourses({
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
       
-      if (formData.lectureTimes.trim()) {
+      if (lectureTimes) {
         setParsingStatus('✓ Lecture events created');
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
@@ -411,24 +477,93 @@ export default function YourCourses({
               </div>
 
               {/* Lecture Times */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <label className="block text-sm font-semibold text-neutral-900">
                   Lecture Times
                   <span className="text-xs font-normal text-neutral-500 ml-2">(Optional)</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.lectureTimes}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lectureTimes: e.target.value })
-                  }
-                  placeholder="e.g., Wednesday Fridays, 1:00 - 3:30 PM"
-                  className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  disabled={isSubmitting}
-                />
-                <p className="text-xs text-neutral-500">
-                  Format: Days (comma or space separated), Time Range (e.g., "Monday Wednesday, 9:00 AM - 10:30 AM")
-                </p>
+                
+                {/* Days of Week */}
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-2">
+                    Days of Week
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: 'monday', label: 'Mon' },
+                      { value: 'tuesday', label: 'Tue' },
+                      { value: 'wednesday', label: 'Wed' },
+                      { value: 'thursday', label: 'Thu' },
+                      { value: 'friday', label: 'Fri' },
+                      { value: 'saturday', label: 'Sat' },
+                      { value: 'sunday', label: 'Sun' },
+                    ].map((day) => (
+                      <label
+                        key={day.value}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-colors ${
+                          formData.lectureDays.includes(day.value)
+                            ? 'bg-blue-50 border-blue-300 text-blue-900'
+                            : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.lectureDays.includes(day.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                lectureDays: [...formData.lectureDays, day.value],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                lectureDays: formData.lectureDays.filter(d => d !== day.value),
+                              });
+                            }
+                          }}
+                          className="w-4 h-4"
+                          disabled={isSubmitting}
+                        />
+                        <span className="text-sm font-medium">{day.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Time Range */}
+                {(formData.lectureDays.length > 0) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-2">
+                        Start Time
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.lectureStartTime}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lectureStartTime: e.target.value })
+                        }
+                        className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 mb-2">
+                        End Time
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.lectureEndTime}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lectureEndTime: e.target.value })
+                        }
+                        className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Color Picker */}
