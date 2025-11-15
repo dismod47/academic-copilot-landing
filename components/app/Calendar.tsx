@@ -189,8 +189,10 @@ export default function Calendar({
         days.push(
           <div
             key={day.toString()}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (isSameMonth(day, monthStart)) {
+                console.log('[Calendar] Date clicked:', dateString);
                 onAddEvent(dateString);
               }
             }}

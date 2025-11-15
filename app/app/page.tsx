@@ -596,7 +596,10 @@ export default function AppPage() {
                   onCourseFilterChange={setSelectedCourse}
                   onEditEvent={(event) => setEventModal({ event })}
                   onDeleteEvent={handleDeleteEvent}
-                  onAddEvent={(date) => setEventModal({ date })}
+                  onAddEvent={(date) => {
+                    console.log('[AppPage] onAddEvent called with date:', date);
+                    setEventModal({ date });
+                  }}
                   onRemoveAllEvents={handleRemoveAllEvents}
                 />
               </div>
@@ -615,7 +618,10 @@ export default function AppPage() {
           courses={courses}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
-          onClose={() => setEventModal(null)}
+          onClose={() => {
+            console.log('[AppPage] Closing event modal');
+            setEventModal(null);
+          }}
         />
       )}
 
