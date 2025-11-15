@@ -5,7 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 // PUT /api/events/[id] - Update an event
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -17,13 +17,14 @@ export async function PUT(
       );
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { title, description, type, date, courseId, weightPercent } = body;
 
     // Verify event belongs to authenticated user's course
     const existingEvent = await prisma.event.findFirst({
       where: {
-        id: params.id,
+        id,
         course: {
           userId: user.id,
         },
@@ -52,7 +53,7 @@ export async function PUT(
     }
 
     const event = await prisma.event.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title,
         description: description || null,
@@ -97,7 +98,7 @@ export async function PUT(
 // DELETE /api/events/[id] - Delete an event
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -109,10 +110,12 @@ export async function DELETE(
       );
     }
 
+    const { id } = await params;
+
     // Verify event belongs to authenticated user's course
     const existingEvent = await prisma.event.findFirst({
       where: {
-        id: params.id,
+        id,
         course: {
           userId: user.id,
         },
@@ -127,7 +130,7 @@ export async function DELETE(
     }
 
     await prisma.event.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

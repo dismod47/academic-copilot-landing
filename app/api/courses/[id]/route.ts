@@ -5,7 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 // PUT /api/courses/[id] - Update a course
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -17,6 +17,7 @@ export async function PUT(
       );
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { name, code, color, rawSyllabusText } = body;
 
@@ -29,7 +30,7 @@ export async function PUT(
 
     // Verify course belongs to authenticated user
     const existingCourse = await prisma.course.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
     });
 
     if (!existingCourse) {
@@ -40,7 +41,7 @@ export async function PUT(
     }
 
     const course = await prisma.course.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name,
         code,
@@ -65,7 +66,7 @@ export async function PUT(
 // DELETE /api/courses/[id] - Delete a course
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -77,9 +78,11 @@ export async function DELETE(
       );
     }
 
+    const { id } = await params;
+
     // Verify course belongs to authenticated user
     const existingCourse = await prisma.course.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
     });
 
     if (!existingCourse) {
@@ -90,7 +93,7 @@ export async function DELETE(
     }
 
     await prisma.course.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });
