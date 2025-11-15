@@ -20,6 +20,7 @@ model User {
   updatedAt            DateTime @updatedAt
 
   courses Course[]
+  assignmentAnalyses AssignmentAnalysis[]
 
   @@map("users")
 }
@@ -67,4 +68,20 @@ model GradeCategory {
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@map("grade_categories")
+}
+
+model AssignmentAnalysis {
+  id              String   @id @default(cuid())
+  userId          String
+  assignmentPrompt String
+  difficulty      Int
+  estimatedTime   String
+  keyConcepts     String[] // Array of strings
+  suggestedSteps  String[] // Array of strings
+  quickStartOutline String
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("assignment_analyses")
 }
