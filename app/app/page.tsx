@@ -5,11 +5,12 @@ import AppHeader from '@/components/app/AppHeader';
 import YourCourses from '@/components/app/YourCourses';
 import Calendar from '@/components/app/Calendar';
 import GradePlanner from '@/components/app/GradePlanner';
+import AssignmentDifficultyPredictor from '@/components/app/AssignmentDifficultyPredictor';
 import EventModal from '@/components/app/EventModal';
 import OnboardingModal from '@/components/app/OnboardingModal';
 import { Course, CalendarEvent, GradeCategory } from '@/types/app';
 
-type Tab = 'courses' | 'calendar' | 'grades';
+type Tab = 'courses' | 'calendar' | 'grades' | 'difficulty';
 
 export default function AppPage() {
   const [activeTab, setActiveTab] = useState<Tab>('courses');
@@ -582,6 +583,16 @@ export default function AppPage() {
             >
               Grade Planner
             </button>
+            <button
+              onClick={() => setActiveTab('difficulty')}
+              className={`py-4 px-2 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'difficulty'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              Assignment Difficulty Predictor
+            </button>
           </div>
         </div>
       </div>
@@ -623,6 +634,8 @@ export default function AppPage() {
             )}
 
             {activeTab === 'grades' && <GradePlanner courses={courses} />}
+
+            {activeTab === 'difficulty' && <AssignmentDifficultyPredictor />}
           </>
         )}
       </main>
