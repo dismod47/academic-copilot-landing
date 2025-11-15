@@ -11,6 +11,7 @@ interface FeatureSectionProps {
   illustration: React.ReactNode;
   reverse?: boolean;
   id?: string;
+  comingSoon?: boolean;
 }
 
 export default function FeatureSection({
@@ -19,6 +20,7 @@ export default function FeatureSection({
   illustration,
   reverse = false,
   id,
+  comingSoon = false,
 }: FeatureSectionProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
@@ -38,9 +40,16 @@ export default function FeatureSection({
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <div className="bg-white rounded-xl border border-neutral-200 p-8 shadow-sm">
-            <h3 className="text-2xl font-semibold text-neutral-900 mb-4">
-              {title}
-            </h3>
+            <div className="flex items-center gap-3 mb-4">
+              <h3 className="text-2xl font-semibold text-neutral-900">
+                {title}
+              </h3>
+              {comingSoon && (
+                <span className="px-3 py-1 text-xs font-medium bg-neutral-100 text-neutral-600 rounded-full border border-neutral-300">
+                  Coming Soon
+                </span>
+              )}
+            </div>
             <p className="text-neutral-600 leading-relaxed text-lg">
               {description}
             </p>

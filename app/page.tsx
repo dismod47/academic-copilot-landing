@@ -37,6 +37,7 @@ export default function Home() {
             description="Turn deadlines into a realistic study plan that fits your week instead of overwhelming it."
             illustration={<StudyPlannerIllustration />}
             reverse={false}
+            comingSoon={true}
           />
 
           <FeatureSection
