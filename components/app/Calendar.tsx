@@ -257,8 +257,10 @@ export default function Calendar({
     return <div className="space-y-1">{rows}</div>;
   };
 
+  console.log('[Calendar] Rendering calendar component, onAddEvent type:', typeof onAddEvent);
+
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm w-full">
+    <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm w-full" style={{ position: 'relative', zIndex: 1 }}>
       {renderHeader()}
       {renderDays()}
       {renderCells()}
