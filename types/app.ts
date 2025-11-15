@@ -1,9 +1,10 @@
 export interface Course {
   id: string;
   name: string;
-  code: string;
+  code?: string;
   color: string;
   syllabusText?: string;
+  lectureTimes?: string;
   gradeCategories?: GradeCategory[];
 }
 

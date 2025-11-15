@@ -5,8 +5,8 @@ import { Course } from '@/types/app';
 
 interface YourCoursesProps {
   courses: Course[];
-  onAddCourse: (course: Omit<Course, 'id'>, syllabusText: string, parseCalendar: boolean, parseGrades: boolean) => Promise<void>;
-  onEditCourse: (id: string, course: Omit<Course, 'id'>, syllabusText: string, parseCalendar: boolean, parseGrades: boolean) => Promise<void>;
+  onAddCourse: (course: Omit<Course, 'id'>, syllabusText: string, parseCalendar: boolean, lectureTimes?: string) => Promise<void>;
+  onEditCourse: (id: string, course: Omit<Course, 'id'>, syllabusText: string, parseCalendar: boolean, lectureTimes?: string) => Promise<void>;
   onDeleteCourse: (id: string) => void;
   usedColors: string[];
 }
@@ -35,10 +35,10 @@ export default function YourCourses({
     name: '',
     code: '',
     color: '',
+    lectureTimes: '',
     syllabusText: '',
     syllabusFile: null as File | null,
     parseCalendar: true,
-    parseGrades: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [parsingStatus, setParsingStatus] = useState('');
@@ -50,12 +50,12 @@ export default function YourCourses({
       setEditingId(course.id);
       setFormData({
         name: course.name,
-        code: course.code,
+        code: course.code || '',
         color: course.color,
+        lectureTimes: course.lectureTimes || '',
         syllabusText: course.syllabusText || '',
         syllabusFile: null,
         parseCalendar: false,
-        parseGrades: false,
       });
     } else {
       setEditingId(null);
@@ -63,10 +63,10 @@ export default function YourCourses({
         name: '',
         code: '',
         color: '',
+        lectureTimes: '',
         syllabusText: '',
         syllabusFile: null,
         parseCalendar: true,
-        parseGrades: true,
       });
     }
     setShowForm(true);
@@ -135,20 +135,19 @@ export default function YourCourses({
     setError('');
     setParsingStatus('');
 
-    if (!formData.name.trim() || !formData.code.trim() || !formData.color) {
-      setError('Please fill in course name, code, and select a color.');
+    if (!formData.name.trim() || !formData.color) {
+      setError('Please fill in course name and select a color.');
       return;
     }
 
     if (editingId) {
       const existingCourse = courses.find(c => c.id === editingId);
-      if (existingCourse && (formData.parseCalendar || formData.parseGrades)) {
+      if (existingCourse && formData.parseCalendar) {
         const shouldReparse = window.confirm(
-          'Do you want to re-parse the syllabus? This will replace existing parsed data.'
+          'Do you want to re-parse the syllabus into calendar events? This will replace existing parsed events.'
         );
         if (!shouldReparse) {
           formData.parseCalendar = false;
-          formData.parseGrades = false;
         }
       }
     }
@@ -159,7 +158,7 @@ export default function YourCourses({
       let syllabusText = formData.syllabusText;
 
       // If user wants to parse but there's a file with no text yet, extract text first
-      if ((formData.parseCalendar || formData.parseGrades) && 
+      if (formData.parseCalendar && 
           formData.syllabusFile && 
           !syllabusText.trim()) {
         const fileName = formData.syllabusFile.name.toLowerCase();
@@ -215,17 +214,17 @@ export default function YourCourses({
 
       const courseData = {
         name: formData.name,
-        code: formData.code,
+        code: formData.code.trim() || undefined,
         color: formData.color,
+        lectureTimes: formData.lectureTimes.trim() || undefined,
         syllabusText: syllabusText,
       };
 
       const hasSyllabus = syllabusText.trim().length > 0;
       const shouldParseCalendar = formData.parseCalendar && hasSyllabus;
-      const shouldParseGrades = formData.parseGrades && hasSyllabus;
 
       // Show parsing status
-      if (shouldParseCalendar || shouldParseGrades) {
+      if (shouldParseCalendar) {
         setParsingStatus('🔍 Analyzing syllabus...');
         await new Promise(resolve => setTimeout(resolve, 800));
       }
@@ -236,25 +235,26 @@ export default function YourCourses({
           courseData, 
           syllabusText,
           shouldParseCalendar,
-          shouldParseGrades
+          formData.lectureTimes.trim() || undefined
         );
       } else {
         await onAddCourse(
           courseData,
           syllabusText,
           shouldParseCalendar,
-          shouldParseGrades
+          formData.lectureTimes.trim() || undefined
         );
       }
 
       // Show completion status
-      if (shouldParseCalendar || shouldParseGrades) {
-        const messages = [];
-        if (shouldParseCalendar) messages.push('✓ Calendar events imported');
-        if (shouldParseGrades) messages.push('✓ Grade breakdown imported');
-        
-        setParsingStatus(messages.join('\n'));
+      if (shouldParseCalendar) {
+        setParsingStatus('✓ Calendar events imported');
         await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+      
+      if (formData.lectureTimes.trim()) {
+        setParsingStatus('✓ Lecture events created');
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       handleCloseForm();
@@ -321,7 +321,9 @@ export default function YourCourses({
                     <h3 className="font-semibold text-neutral-900">
                       {course.name}
                     </h3>
-                    <p className="text-sm text-neutral-600">{course.code}</p>
+                    {course.code && (
+                      <p className="text-sm text-neutral-600">{course.code}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -393,7 +395,8 @@ export default function YourCourses({
               {/* Course Code */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-neutral-900">
-                  Course Code *
+                  Course Code
+                  <span className="text-xs font-normal text-neutral-500 ml-2">(Optional)</span>
                 </label>
                 <input
                   type="text"
@@ -403,9 +406,29 @@ export default function YourCourses({
                   }
                   placeholder="e.g., MATH 2301"
                   className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  required
                   disabled={isSubmitting}
                 />
+              </div>
+
+              {/* Lecture Times */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-neutral-900">
+                  Lecture Times
+                  <span className="text-xs font-normal text-neutral-500 ml-2">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.lectureTimes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lectureTimes: e.target.value })
+                  }
+                  placeholder="e.g., Wednesday Fridays, 1:00 - 3:30 PM"
+                  className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-neutral-500">
+                  Format: Days (comma or space separated), Time Range (e.g., "Monday Wednesday, 9:00 AM - 10:30 AM")
+                </p>
               </div>
 
               {/* Color Picker */}
@@ -523,23 +546,6 @@ export default function YourCourses({
                           Parse syllabus into calendar (deadlines)
                         </span>
                       </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.parseGrades}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              parseGrades: e.target.checked,
-                            })
-                          }
-                          className="w-4 h-4"
-                          disabled={isSubmitting}
-                        />
-                        <span className="text-sm text-neutral-700">
-                          Parse syllabus into grade weights
-                        </span>
-                      </label>
                     </div>
                   )}
 
@@ -563,23 +569,6 @@ export default function YourCourses({
                         />
                         <span className="text-sm text-neutral-700">
                           Re-parse into calendar (replaces existing events)
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.parseGrades}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              parseGrades: e.target.checked,
-                            })
-                          }
-                          className="w-4 h-4"
-                          disabled={isSubmitting}
-                        />
-                        <span className="text-sm text-neutral-700">
-                          Re-parse grade weights (replaces existing breakdown)
                         </span>
                       </label>
                     </div>

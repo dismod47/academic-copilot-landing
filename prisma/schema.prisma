@@ -29,9 +29,10 @@ model Course {
   id              String   @id @default(cuid())
   userId          String
   name            String
-  code            String
+  code            String?
   color           String?
   rawSyllabusText String?
+  lectureTimes    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

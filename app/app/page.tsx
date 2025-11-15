@@ -179,13 +179,13 @@ export default function AppPage() {
     courseData: Omit<Course, 'id'>,
     syllabusText: string,
     parseCalendar: boolean,
-    parseGrades: boolean
+    lectureTimes?: string
   ) => {
-    console.log('[AppPage] Adding course:', { 
-      courseName: courseData.name, 
-      syllabusLength: syllabusText.length, 
-      parseCalendar, 
-      parseGrades 
+    console.log('[AppPage] Adding course:', {
+      courseName: courseData.name,
+      syllabusLength: syllabusText.length,
+      parseCalendar,
+      lectureTimes 
     });
 
     try {
@@ -195,9 +195,10 @@ export default function AppPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: courseData.name,
-          code: courseData.code,
+          code: courseData.code || null,
           color: courseData.color,
           rawSyllabusText: syllabusText || null,
+          lectureTimes: courseData.lectureTimes || null,
         }),
       });
 
@@ -256,41 +257,33 @@ export default function AppPage() {
         }
       }
 
-      // Parse grade categories if requested
-      if (parseGrades && syllabusText.trim()) {
-        console.log('[AppPage] Parsing grade breakdown...');
+      // Create lecture events if lecture times provided
+      if (lectureTimes && lectureTimes.trim()) {
+        console.log('[AppPage] Creating lecture events...');
         try {
-          const response = await fetch('/api/parse-grades', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ syllabusText }),
-          });
+          const { generateLectureEvents } = await import('@/lib/parse-lecture-times');
+          const lectureEvents = generateLectureEvents(
+            newCourseId,
+            courseData.name,
+            lectureTimes
+          );
 
-          const data = await response.json();
-          console.log('[AppPage] Grade parse response:', data);
-
-          if (data.categories && data.categories.length > 0) {
-            // Save grade categories to database
-            const gradesResponse = await fetch('/api/grade-categories', {
+          if (lectureEvents.length > 0) {
+            const eventsResponse = await fetch('/api/events', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                courseId: newCourseId,
-                categories: data.categories.map((cat: any) => ({
-                  name: cat.name,
-                  weight: cat.weight,
-                  currentScore: 0,
-                  isCompleted: false,
-                })),
-              }),
+              body: JSON.stringify({ events: lectureEvents }),
             });
 
-            if (gradesResponse.ok) {
-              console.log('[AppPage] Saved grade categories to database');
+            if (eventsResponse.ok) {
+              console.log('[AppPage] Created', lectureEvents.length, 'lecture events');
+              setTimeout(() => {
+                loadEvents();
+              }, 500);
             }
           }
         } catch (error) {
-          console.error('[AppPage] Failed to parse grade categories:', error);
+          console.error('[AppPage] Failed to create lecture events:', error);
         }
       }
 
@@ -307,9 +300,9 @@ export default function AppPage() {
     courseData: Omit<Course, 'id'>,
     syllabusText: string,
     parseCalendar: boolean,
-    parseGrades: boolean
+    lectureTimes?: string
   ) => {
-    console.log('[AppPage] Editing course:', id, { parseCalendar, parseGrades });
+    console.log('[AppPage] Editing course:', id, { parseCalendar, lectureTimes });
 
     try {
       // Update course in database
@@ -318,9 +311,10 @@ export default function AppPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: courseData.name,
-          code: courseData.code,
+          code: courseData.code || null,
           color: courseData.color,
           rawSyllabusText: syllabusText || null,
+          lectureTimes: courseData.lectureTimes || null,
         }),
       });
 
@@ -371,41 +365,47 @@ export default function AppPage() {
         }
       }
 
-      // Re-parse grades if requested
-      if (parseGrades && syllabusText.trim()) {
-        console.log('[AppPage] Re-parsing grades...');
+      // Update lecture events if lecture times provided
+      if (lectureTimes !== undefined) {
+        console.log('[AppPage] Updating lecture events...');
         try {
-          const response = await fetch('/api/parse-grades', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ syllabusText }),
-          });
+          // Delete old lecture events for this course
+          const oldLectureEvents = events.filter(e => e.courseId === id && e.type === 'lecture');
+          for (const event of oldLectureEvents) {
+            await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
+          }
 
-          const data = await response.json();
-          console.log('[AppPage] Re-parse grade response:', data);
-          
-          if (data.categories && data.categories.length > 0) {
-            // Save grade categories to database (replaces existing)
-            const gradesResponse = await fetch('/api/grade-categories', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                courseId: id,
-                categories: data.categories.map((cat: any) => ({
-                  name: cat.name,
-                  weight: cat.weight,
-                  currentScore: 0,
-                  isCompleted: false,
-                })),
-              }),
-            });
+          // Create new lecture events if lecture times provided
+          if (lectureTimes && lectureTimes.trim()) {
+            const { generateLectureEvents } = await import('@/lib/parse-lecture-times');
+            const lectureEvents = generateLectureEvents(
+              id,
+              courseData.name,
+              lectureTimes
+            );
 
-            if (gradesResponse.ok) {
-              console.log('[AppPage] Updated grade categories in database');
+            if (lectureEvents.length > 0) {
+              const eventsResponse = await fetch('/api/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ events: lectureEvents }),
+              });
+
+              if (eventsResponse.ok) {
+                console.log('[AppPage] Updated lecture events');
+                setTimeout(() => {
+                  loadEvents();
+                }, 500);
+              }
             }
+          } else {
+            // Just reload if lecture times were removed
+            setTimeout(() => {
+              loadEvents();
+            }, 500);
           }
         } catch (error) {
-          console.error('[AppPage] Failed to parse grade categories:', error);
+          console.error('[AppPage] Failed to update lecture events:', error);
         }
       }
 

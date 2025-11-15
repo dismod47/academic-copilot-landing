@@ -51,11 +51,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, code, color, rawSyllabusText } = body;
+    const { name, code, color, rawSyllabusText, lectureTimes } = body;
 
-    if (!name || !code) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'Name and code are required' },
+        { error: 'Name is required' },
         { status: 400 }
       );
     }
@@ -64,9 +64,10 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         name,
-        code,
+        code: code || null,
         color: color || null,
         rawSyllabusText: rawSyllabusText || null,
+        lectureTimes: lectureTimes || null,
       },
       include: {
         gradeCategories: true,
