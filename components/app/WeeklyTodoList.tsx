@@ -40,26 +40,44 @@ export default function WeeklyTodoList({ events, courses }: WeeklyTodoListProps)
     });
   }, [events, weekStart, weekEnd]);
 
-  // Get priority based on event type
-  const getPriority = (type?: string): number => {
-    if (!type) return 5;
+  // Get priority based on event type and title
+  const getPriority = (type?: string, title?: string): number => {
+    const typeLower = (type || '').toLowerCase();
+    const titleLower = (title || '').toLowerCase();
     
-    const typeLower = type.toLowerCase();
-    if (typeLower.includes('exam') || typeLower.includes('test') || typeLower.includes('final')) {
+    // Combine type and title for matching
+    const combinedText = `${typeLower} ${titleLower}`;
+    
+    // Exams and tests - Highest priority
+    if (
+      combinedText.includes('exam') || 
+      combinedText.includes('test') || 
+      combinedText.includes('final') ||
+      combinedText.includes('midterm')
+    ) {
       return 1; // Highest priority
     }
-    if (typeLower.includes('quiz') || typeLower.includes('midterm')) {
-      return 2;
+    
+    // Quizzes - High priority
+    if (combinedText.includes('quiz')) {
+      return 1; // Also highest priority (same as exams)
     }
-    if (typeLower.includes('project') || typeLower.includes('assignment')) {
+    
+    // Projects and assignments
+    if (combinedText.includes('project') || combinedText.includes('assignment')) {
       return 3;
     }
-    if (typeLower.includes('homework') || typeLower.includes('hw')) {
+    
+    // Homework
+    if (combinedText.includes('homework') || combinedText.includes('hw')) {
       return 4;
     }
-    if (typeLower.includes('reading') || typeLower.includes('reading')) {
+    
+    // Reading
+    if (combinedText.includes('reading')) {
       return 6;
     }
+    
     return 5; // Default/Other
   };
 
@@ -77,14 +95,16 @@ export default function WeeklyTodoList({ events, courses }: WeeklyTodoListProps)
         title: event.title,
         date: eventDate,
         type: event.type || 'other',
-        priority: getPriority(event.type),
+        priority: getPriority(event.type, event.title),
         courseName: course?.name,
         color: course?.color,
       });
 
-      // If it's an exam/test, add a "Study for" task
+      // If it's an exam/test/quiz, add a "Study for" task
       const typeLower = (event.type || '').toLowerCase();
-      if (typeLower.includes('exam') || typeLower.includes('test') || typeLower.includes('final') || typeLower.includes('midterm')) {
+      const titleLower = (event.title || '').toLowerCase();
+      const combinedText = `${typeLower} ${titleLower}`;
+      if (combinedText.includes('exam') || combinedText.includes('test') || combinedText.includes('final') || combinedText.includes('midterm') || combinedText.includes('quiz')) {
         // Add study task 2-3 days before the exam
         const studyDate = addDays(eventDate, -2);
         
