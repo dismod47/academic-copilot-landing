@@ -56,7 +56,7 @@ export default function AppHeader() {
       <div className="max-w-6xl mx-auto px-6 py-3">
         <div className="flex justify-between items-center">
           <Link href="/" className="font-semibold text-neutral-900 hover:text-neutral-700">
-            Your Academic Co-Pilot
+            SyllaSync
           </Link>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">

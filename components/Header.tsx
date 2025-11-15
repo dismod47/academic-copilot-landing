@@ -46,7 +46,7 @@ export default function Header() {
         <div className="max-w-6xl mx-auto px-6 py-3">
           <div className="flex justify-between items-center">
             <div className="font-semibold text-neutral-900">
-              Your Academic Co-Pilot
+              SyllaSync
             </div>
             <div className="flex items-center gap-4">
               {user ? (
