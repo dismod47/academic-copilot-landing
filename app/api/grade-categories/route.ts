@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     const gradeCategories = await prisma.gradeCategory.findMany({
       where: { courseId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { id: 'asc' },
     });
 
     return NextResponse.json({ gradeCategories });
