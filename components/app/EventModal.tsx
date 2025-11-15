@@ -40,7 +40,7 @@ export default function EventModal({
         title: '',
         date,
         description: '',
-        courseId: courses[0]?.id || '',
+        courseId: '', // Default to "Other" for new events
       });
     }
   }, [event, date, courses]);

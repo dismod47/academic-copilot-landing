@@ -434,6 +434,10 @@ export default function AppPage() {
 
         if (response.ok) {
           await loadEvents();
+        } else {
+          const errorData = await response.json();
+          console.error('[AppPage] Failed to update event:', errorData);
+          alert(`Failed to update event: ${errorData.error || 'Unknown error'}`);
         }
       } else {
         // Create new event
@@ -442,7 +446,7 @@ export default function AppPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             events: [{
-              courseId: event.courseId,
+              courseId: event.courseId || null, // Allow null for "Other" events
               title: event.title,
               description: event.description || '',
               type: event.type || 'other',
@@ -454,6 +458,10 @@ export default function AppPage() {
 
         if (response.ok) {
           await loadEvents();
+        } else {
+          const errorData = await response.json();
+          console.error('[AppPage] Failed to create event:', errorData);
+          alert(`Failed to create event: ${errorData.error || 'Unknown error'}`);
         }
       }
     } catch (error) {
