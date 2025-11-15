@@ -37,6 +37,7 @@ export default function Calendar({
   onAddEvent,
   onRemoveAllEvents
 }: CalendarProps) {
+  console.log('[Calendar] Component rendered with onAddEvent:', typeof onAddEvent, onAddEvent);
   // Set initial month to current month, but default to January 2024 if current is before that
   const getInitialMonth = () => {
     const now = new Date();
@@ -186,23 +187,35 @@ export default function Calendar({
           isSameDay(parseISO(event.date), cloneDay)
         );
 
+        const handleDateCellClick = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('[Calendar] Date cell clicked:', dateString, 'isSameMonth:', isSameMonth(day, monthStart));
+          console.log('[Calendar] onAddEvent is:', typeof onAddEvent);
+          
+          if (isSameMonth(day, monthStart)) {
+            console.log('[Calendar] Calling onAddEvent with:', dateString);
+            if (typeof onAddEvent === 'function') {
+              onAddEvent(dateString);
+            } else {
+              console.error('[Calendar] onAddEvent is not a function!', onAddEvent);
+            }
+          }
+        };
+
         days.push(
           <div
             key={day.toString()}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isSameMonth(day, monthStart)) {
-                console.log('[Calendar] Date clicked:', dateString);
-                onAddEvent(dateString);
-              }
-            }}
+            onClick={handleDateCellClick}
+            onMouseDown={() => console.log('[Calendar] Mouse down on:', dateString)}
             className={`min-h-[140px] p-2 border border-neutral-200 rounded-lg cursor-pointer transition-all ${
               !isSameMonth(day, monthStart)
                 ? 'bg-neutral-50 text-neutral-400'
                 : 'bg-white hover:bg-blue-50 hover:border-blue-300'
             }`}
+            style={{ position: 'relative', zIndex: 1 }}
           >
-            <div className="font-semibold text-sm mb-2">{formattedDate}</div>
+            <div className="font-semibold text-sm mb-2" style={{ userSelect: 'none' }}>{formattedDate}</div>
             <div className="space-y-1">
               {dayEvents.map((event) => {
                 const course = event.courseId ? courses.find(c => c.id === event.courseId) : null;
@@ -215,7 +228,9 @@ export default function Calendar({
                   <div
                     key={event.id}
                     onClick={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
+                      console.log('[Calendar] Event clicked:', event.title);
                       onEditEvent(event);
                     }}
                     className="text-xs px-2 py-1.5 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
