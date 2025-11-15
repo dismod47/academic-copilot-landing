@@ -12,7 +12,7 @@ export interface CalendarEvent {
   title: string;
   date: string;
   description?: string;
-  courseId: string;
+  courseId?: string; // Optional - can be null for "Other" events
   type?: string;
   weightPercent?: number;
 }

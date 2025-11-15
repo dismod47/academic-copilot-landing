@@ -53,7 +53,7 @@ export default function EventModal({
       title: formData.title,
       date: formData.date,
       description: formData.description,
-      courseId: formData.courseId,
+      courseId: formData.courseId || undefined, // Convert empty string to undefined
       type: 'other',
     };
 
@@ -131,7 +131,7 @@ export default function EventModal({
               }
               className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
-              <option value="">No course</option>
+              <option value="">Other</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
                   {course.name} ({course.code})

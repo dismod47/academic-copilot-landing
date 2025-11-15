@@ -18,13 +18,33 @@ export async function GET(request: NextRequest) {
     const courseId = searchParams.get('courseId');
 
     const where: any = {
-      course: {
-        userId: user.id,
-      },
+      OR: [
+        // Events with courses owned by user
+        {
+          course: {
+            userId: user.id,
+          },
+        },
+        // Events without courses (Other events)
+        {
+          courseId: null,
+        },
+      ],
     };
 
     if (courseId && courseId !== 'all') {
-      where.courseId = courseId;
+      if (courseId === 'other') {
+        where.AND = [{ courseId: null }];
+      } else {
+        where.AND = [
+          { courseId: courseId },
+          {
+            course: {
+              userId: user.id,
+            },
+          },
+        ];
+      }
     }
 
     const events = await prisma.event.findMany({
@@ -87,25 +107,28 @@ export async function POST(request: NextRequest) {
 
     const eventsArray = Array.isArray(events) ? events : [events];
 
-    // Verify all courses belong to authenticated user
-    const courseIds = [...new Set(eventsArray.map((e: any) => e.courseId))];
-    const courses = await prisma.course.findMany({
-      where: {
-        id: { in: courseIds },
-        userId: user.id,
-      },
-    });
+    // Verify all courses belong to authenticated user (skip if courseId is null/undefined)
+    const courseIds = [...new Set(eventsArray.map((e: any) => e.courseId).filter((id: any) => id != null))];
+    
+    if (courseIds.length > 0) {
+      const courses = await prisma.course.findMany({
+        where: {
+          id: { in: courseIds },
+          userId: user.id,
+        },
+      });
 
-    if (courses.length !== courseIds.length) {
-      return NextResponse.json(
-        { error: 'One or more courses not found' },
-        { status: 400 }
-      );
+      if (courses.length !== courseIds.length) {
+        return NextResponse.json(
+          { error: 'One or more courses not found' },
+          { status: 400 }
+        );
+      }
     }
 
     const createdEvents = await prisma.event.createMany({
       data: eventsArray.map((event: any) => ({
-        courseId: event.courseId,
+        courseId: event.courseId || null, // Allow null for "Other" events
         title: event.title,
         description: event.description || null,
         type: event.type || 'other',
@@ -114,12 +137,19 @@ export async function POST(request: NextRequest) {
       })),
     });
 
-    // Fetch created events with course info
+    // Fetch created events with course info (including events without courses)
     const allEvents = await prisma.event.findMany({
       where: {
-        course: {
-          userId: user.id,
-        },
+        OR: [
+          {
+            course: {
+              userId: user.id,
+            },
+          },
+          {
+            courseId: null,
+          },
+        ],
       },
       include: {
         course: {

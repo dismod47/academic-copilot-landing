@@ -478,8 +478,14 @@ export default function AppPage() {
   const handleRemoveAllEvents = async () => {
     try {
       if (selectedCourse === 'all') {
-        // Delete all events for test user
+        // Delete all events for user
         const eventsToDelete = events;
+        for (const event of eventsToDelete) {
+          await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
+        }
+      } else if (selectedCourse === 'other') {
+        // Delete "Other" events (events without course)
+        const eventsToDelete = events.filter(e => !e.courseId);
         for (const event of eventsToDelete) {
           await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
         }

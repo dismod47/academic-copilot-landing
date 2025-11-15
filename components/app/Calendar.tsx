@@ -75,6 +75,8 @@ export default function Calendar({
 
   const filteredEvents = selectedCourse === 'all' 
     ? events 
+    : selectedCourse === 'other'
+    ? events.filter(e => !e.courseId)
     : events.filter(e => e.courseId === selectedCourse);
 
   const handleRemoveAll = () => {
@@ -128,6 +130,7 @@ export default function Calendar({
               className="px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm"
             >
               <option value="all">All courses</option>
+              <option value="other">Other</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
                   {course.name}
@@ -198,7 +201,12 @@ export default function Calendar({
             <div className="font-semibold text-sm mb-2">{formattedDate}</div>
             <div className="space-y-1">
               {dayEvents.map((event) => {
-                const course = courses.find(c => c.id === event.courseId);
+                const course = event.courseId ? courses.find(c => c.id === event.courseId) : null;
+                const backgroundColor = course 
+                  ? course.color || '#3B82F6' 
+                  : '#9CA3AF'; // Grey (#9CA3AF) for "Other" events
+                const textColor = '#FFFFFF'; // White text on all backgrounds
+                
                 return (
                   <div
                     key={event.id}
@@ -207,13 +215,10 @@ export default function Calendar({
                       onEditEvent(event);
                     }}
                     className="text-xs px-2 py-1.5 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
-                    style={{
-                      backgroundColor: course?.color ? `${course.color}20` : '#DBEAFE',
-                      borderLeft: `3px solid ${course?.color || '#3B82F6'}`
-                    }}
+                    style={{ backgroundColor, color: textColor }}
                     title={event.title}
                   >
-                    {event.title}
+                    {!course ? 'Other: ' : ''}{event.title}
                   </div>
                 );
               })}

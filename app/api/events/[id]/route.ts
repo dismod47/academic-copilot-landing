@@ -21,13 +21,20 @@ export async function PUT(
     const body = await request.json();
     const { title, description, type, date, courseId, weightPercent } = body;
 
-    // Verify event belongs to authenticated user's course
+    // Verify event belongs to authenticated user (either through course or is an "Other" event)
     const existingEvent = await prisma.event.findFirst({
       where: {
         id,
-        course: {
-          userId: user.id,
-        },
+        OR: [
+          {
+            course: {
+              userId: user.id,
+            },
+          },
+          {
+            courseId: null,
+          },
+        ],
       },
     });
 
@@ -38,10 +45,11 @@ export async function PUT(
       );
     }
 
-    // If courseId is being changed, verify new course belongs to authenticated user
-    if (courseId && courseId !== existingEvent.courseId) {
+    // If courseId is being changed, verify new course belongs to authenticated user (or is null for "Other")
+    const newCourseId = courseId || null;
+    if (newCourseId !== existingEvent.courseId && newCourseId !== null) {
       const course = await prisma.course.findFirst({
-        where: { id: courseId, userId: user.id },
+        where: { id: newCourseId, userId: user.id },
       });
 
       if (!course) {
@@ -59,7 +67,7 @@ export async function PUT(
         description: description || null,
         type: type || existingEvent.type,
         date: date ? new Date(date) : existingEvent.date,
-        courseId: courseId || existingEvent.courseId,
+        courseId: newCourseId,
         weightPercent: weightPercent !== undefined ? weightPercent : existingEvent.weightPercent,
       },
       include: {
@@ -112,13 +120,20 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Verify event belongs to authenticated user's course
+    // Verify event belongs to authenticated user (either through course or is an "Other" event)
     const existingEvent = await prisma.event.findFirst({
       where: {
         id,
-        course: {
-          userId: user.id,
-        },
+        OR: [
+          {
+            course: {
+              userId: user.id,
+            },
+          },
+          {
+            courseId: null,
+          },
+        ],
       },
     });
 

@@ -43,7 +43,7 @@ model Course {
 
 model Event {
   id           String    @id @default(cuid())
-  courseId     String
+  courseId     String?
   title        String
   description  String?
   type         String
@@ -51,7 +51,7 @@ model Event {
   weightPercent Float?
   createdAt    DateTime  @default(now())
 
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@map("events")
 }
