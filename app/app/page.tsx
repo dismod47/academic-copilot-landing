@@ -6,6 +6,7 @@ import YourCourses from '@/components/app/YourCourses';
 import Calendar from '@/components/app/Calendar';
 import GradePlanner from '@/components/app/GradePlanner';
 import EventModal from '@/components/app/EventModal';
+import OnboardingModal from '@/components/app/OnboardingModal';
 import { Course, CalendarEvent, GradeCategory } from '@/types/app';
 
 type Tab = 'courses' | 'calendar' | 'grades';
@@ -21,18 +22,62 @@ export default function AppPage() {
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
   // Check authentication on mount
   useEffect(() => {
     checkAuth();
   }, []);
 
-  // Load courses from database on mount
+  // Check onboarding status when authenticated
   useEffect(() => {
     if (authenticated) {
+      checkOnboardingStatus();
       loadCourses();
     }
   }, [authenticated]);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      const response = await fetch('/api/auth/onboarding');
+      const data = await response.json();
+      
+      if (data.hasCompletedOnboarding === false) {
+        setShowOnboarding(true);
+      }
+      setOnboardingChecked(true);
+    } catch (error) {
+      console.error('[AppPage] Failed to check onboarding status:', error);
+      setOnboardingChecked(true);
+    }
+  };
+
+  const handleOnboardingComplete = async () => {
+    try {
+      await fetch('/api/auth/onboarding', {
+        method: 'POST',
+      });
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error('[AppPage] Failed to complete onboarding:', error);
+      // Still hide the modal even if API call fails
+      setShowOnboarding(false);
+    }
+  };
+
+  const handleOnboardingSkip = async () => {
+    try {
+      await fetch('/api/auth/onboarding', {
+        method: 'POST',
+      });
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error('[AppPage] Failed to skip onboarding:', error);
+      // Still hide the modal even if API call fails
+      setShowOnboarding(false);
+    }
+  };
 
   // Load events when selectedCourse changes
   useEffect(() => {
@@ -555,6 +600,15 @@ export default function AppPage() {
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
           onClose={() => setEventModal(null)}
+        />
+      )}
+
+      {/* Onboarding Modal */}
+      {showOnboarding && onboardingChecked && (
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
         />
       )}
     </div>
