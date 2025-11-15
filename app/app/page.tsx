@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppHeader from '@/components/app/AppHeader';
 import YourCourses from '@/components/app/YourCourses';
 import Calendar from '@/components/app/Calendar';
@@ -19,6 +19,104 @@ export default function AppPage() {
     date?: string;
   } | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+
+  // Check authentication on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  // Load courses from database on mount
+  useEffect(() => {
+    if (authenticated) {
+      loadCourses();
+    }
+  }, [authenticated]);
+
+  // Load events when selectedCourse changes
+  useEffect(() => {
+    if (authenticated) {
+      loadEvents();
+    }
+  }, [selectedCourse, authenticated]);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/session');
+      const data = await response.json();
+      
+      if (data.user) {
+        setAuthenticated(true);
+      } else {
+        // Not authenticated, redirect to home
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('[AppPage] Failed to check auth:', error);
+      window.location.href = '/';
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCourses = async () => {
+    try {
+      const response = await fetch('/api/courses');
+      const data = await response.json();
+      
+      if (data.courses) {
+        // Transform database courses to match app types
+        const transformedCourses: Course[] = data.courses.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code,
+          color: c.color || '#3B82F6',
+          syllabusText: c.rawSyllabusText || '',
+          gradeCategories: c.gradeCategories?.map((gc: any) => ({
+            id: gc.id,
+            name: gc.name,
+            weight: gc.weightPercent,
+            currentScore: gc.currentScore || 0,
+            isCompleted: gc.isCompleted,
+          })),
+        }));
+        
+        setCourses(transformedCourses);
+      }
+    } catch (error) {
+      console.error('[AppPage] Failed to load courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadEvents = async () => {
+    try {
+      const courseId = selectedCourse === 'all' ? '' : selectedCourse;
+      const url = courseId ? `/api/events?courseId=${courseId}` : '/api/events';
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.events) {
+        // Transform database events to match app types
+        const transformedEvents: CalendarEvent[] = data.events.map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          date: e.date,
+          description: e.description || '',
+          courseId: e.courseId,
+          type: e.type,
+          weightPercent: e.weightPercent,
+        }));
+        
+        setEvents(transformedEvents);
+      }
+    } catch (error) {
+      console.error('[AppPage] Failed to load events:', error);
+    }
+  };
 
   const handleAddCourse = async (
     courseData: Omit<Course, 'id'>,
@@ -33,94 +131,109 @@ export default function AppPage() {
       parseGrades 
     });
 
-    const newCourse: Course = {
-      id: Date.now().toString(),
-      ...courseData,
-      syllabusText: syllabusText,
-    };
-
-    let parsedEvents: CalendarEvent[] = [];
-    let parsedGrades: GradeCategory[] = [];
-
-    // Parse calendar events if requested
-    if (parseCalendar && syllabusText.trim()) {
-      console.log('[AppPage] Parsing calendar events...');
-      try {
-        const response = await fetch('/api/parse-syllabus', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ syllabusText }),
-        });
-
-        const data = await response.json();
-        console.log('[AppPage] Calendar parse response:', data);
-
-        if (data.events && data.events.length > 0) {
-          const maxId = events.length > 0 ? Math.max(...events.map(e => e.id)) : 0;
-          parsedEvents = data.events.map((event: any, index: number) => ({
-            id: maxId + index + 1,
-            title: event.title,
-            date: event.date,
-            description: event.description || '',
-            courseId: newCourse.id,
-          }));
-          console.log('[AppPage] Created calendar events:', parsedEvents);
-        }
-      } catch (error) {
-        console.error('[AppPage] Failed to parse calendar events:', error);
-      }
-    }
-
-    // Parse grade categories if requested
-    if (parseGrades && syllabusText.trim()) {
-      console.log('[AppPage] Parsing grade breakdown...');
-      try {
-        const response = await fetch('/api/parse-grades', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ syllabusText }),
-        });
-
-        const data = await response.json();
-        console.log('[AppPage] Grade parse response:', data);
-
-        if (data.categories && data.categories.length > 0) {
-          parsedGrades = data.categories.map((cat: any, index: number) => ({
-            id: (index + 1).toString(),
-            name: cat.name,
-            weight: cat.weight,
-            currentScore: 0,
-            isCompleted: false,
-          }));
-          console.log('[AppPage] Created grade categories:', parsedGrades);
-          
-          // CRITICAL: Store the parsed grades on the course object
-          newCourse.gradeCategories = parsedGrades;
-          console.log('[AppPage] Assigned gradeCategories to course:', newCourse.gradeCategories);
-        } else {
-          console.log('[AppPage] No grade categories in response');
-        }
-      } catch (error) {
-        console.error('[AppPage] Failed to parse grade categories:', error);
-      }
-    }
-
-    // Add course to state
-    console.log('[AppPage] Final course object before adding to state:', newCourse);
-    setCourses(prev => {
-      const updated = [...prev, newCourse];
-      console.log('[AppPage] Updated courses state:', updated);
-      return updated;
-    });
-
-    // Add events to state
-    if (parsedEvents.length > 0) {
-      console.log('[AppPage] Adding events to state:', parsedEvents);
-      setEvents(prev => {
-        const updated = [...prev, ...parsedEvents];
-        console.log('[AppPage] Updated events state:', updated);
-        return updated;
+    try {
+      // Create course in database
+      const courseResponse = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: courseData.name,
+          code: courseData.code,
+          color: courseData.color,
+          rawSyllabusText: syllabusText || null,
+        }),
       });
+
+      const courseData_result = await courseResponse.json();
+      if (!courseData_result.course) {
+        throw new Error('Failed to create course');
+      }
+
+      const newCourseId = courseData_result.course.id;
+
+      // Parse calendar events if requested
+      if (parseCalendar && syllabusText.trim()) {
+        console.log('[AppPage] Parsing calendar events...');
+        try {
+          const response = await fetch('/api/parse-syllabus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ syllabusText }),
+          });
+
+          const data = await response.json();
+          console.log('[AppPage] Calendar parse response:', data);
+
+          if (data.events && data.events.length > 0) {
+            // Save events to database
+            const eventsResponse = await fetch('/api/events', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                events: data.events.map((event: any) => ({
+                  courseId: newCourseId,
+                  title: event.title,
+                  description: event.description || '',
+                  type: 'other',
+                  date: event.date,
+                  weightPercent: null,
+                })),
+              }),
+            });
+
+            if (eventsResponse.ok) {
+              console.log('[AppPage] Saved calendar events to database');
+              await loadEvents(); // Reload events
+            }
+          }
+        } catch (error) {
+          console.error('[AppPage] Failed to parse calendar events:', error);
+        }
+      }
+
+      // Parse grade categories if requested
+      if (parseGrades && syllabusText.trim()) {
+        console.log('[AppPage] Parsing grade breakdown...');
+        try {
+          const response = await fetch('/api/parse-grades', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ syllabusText }),
+          });
+
+          const data = await response.json();
+          console.log('[AppPage] Grade parse response:', data);
+
+          if (data.categories && data.categories.length > 0) {
+            // Save grade categories to database
+            const gradesResponse = await fetch('/api/grade-categories', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                courseId: newCourseId,
+                categories: data.categories.map((cat: any) => ({
+                  name: cat.name,
+                  weight: cat.weight,
+                  currentScore: 0,
+                  isCompleted: false,
+                })),
+              }),
+            });
+
+            if (gradesResponse.ok) {
+              console.log('[AppPage] Saved grade categories to database');
+            }
+          }
+        } catch (error) {
+          console.error('[AppPage] Failed to parse grade categories:', error);
+        }
+      }
+
+      // Reload courses to get the new course with relationships
+      await loadCourses();
+    } catch (error) {
+      console.error('[AppPage] Failed to add course:', error);
+      throw error;
     }
   };
 
@@ -131,101 +244,211 @@ export default function AppPage() {
     parseCalendar: boolean,
     parseGrades: boolean
   ) => {
-    const existingCourse = courses.find(c => c.id === id);
-    if (!existingCourse) return;
-
     console.log('[AppPage] Editing course:', id, { parseCalendar, parseGrades });
 
-    const updatedCourse: Course = {
-      id,
-      ...courseData,
-      syllabusText: syllabusText,
-      gradeCategories: existingCourse.gradeCategories,
-    };
+    try {
+      // Update course in database
+      const courseResponse = await fetch(`/api/courses/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: courseData.name,
+          code: courseData.code,
+          color: courseData.color,
+          rawSyllabusText: syllabusText || null,
+        }),
+      });
 
-    // Re-parse calendar if requested
-    if (parseCalendar && syllabusText.trim()) {
-      console.log('[AppPage] Re-parsing calendar...');
-      // Remove old events for this course
-      setEvents(prev => prev.filter(e => e.courseId !== id));
+      if (!courseResponse.ok) {
+        throw new Error('Failed to update course');
+      }
 
-      try {
-        const response = await fetch('/api/parse-syllabus', {
-          method: 'POST',
+      // Re-parse calendar if requested
+      if (parseCalendar && syllabusText.trim()) {
+        console.log('[AppPage] Re-parsing calendar...');
+        // Delete old events for this course
+        const oldEvents = events.filter(e => e.courseId === id);
+        for (const event of oldEvents) {
+          await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
+        }
+
+        try {
+          const response = await fetch('/api/parse-syllabus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ syllabusText }),
+          });
+
+          const data = await response.json();
+          if (data.events && data.events.length > 0) {
+            // Save new events to database
+            const eventsResponse = await fetch('/api/events', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                events: data.events.map((event: any) => ({
+                  courseId: id,
+                  title: event.title,
+                  description: event.description || '',
+                  type: 'other',
+                  date: event.date,
+                  weightPercent: null,
+                })),
+              }),
+            });
+
+            if (eventsResponse.ok) {
+              await loadEvents(); // Reload events
+            }
+          }
+        } catch (error) {
+          console.error('[AppPage] Failed to parse calendar events:', error);
+        }
+      }
+
+      // Re-parse grades if requested
+      if (parseGrades && syllabusText.trim()) {
+        console.log('[AppPage] Re-parsing grades...');
+        try {
+          const response = await fetch('/api/parse-grades', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ syllabusText }),
+          });
+
+          const data = await response.json();
+          console.log('[AppPage] Re-parse grade response:', data);
+          
+          if (data.categories && data.categories.length > 0) {
+            // Save grade categories to database (replaces existing)
+            const gradesResponse = await fetch('/api/grade-categories', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                courseId: id,
+                categories: data.categories.map((cat: any) => ({
+                  name: cat.name,
+                  weight: cat.weight,
+                  currentScore: 0,
+                  isCompleted: false,
+                })),
+              }),
+            });
+
+            if (gradesResponse.ok) {
+              console.log('[AppPage] Updated grade categories in database');
+            }
+          }
+        } catch (error) {
+          console.error('[AppPage] Failed to parse grade categories:', error);
+        }
+      }
+
+      // Reload courses to get updated data
+      await loadCourses();
+    } catch (error) {
+      console.error('[AppPage] Failed to edit course:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteCourse = async (id: string) => {
+    try {
+      const response = await fetch(`/api/courses/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Reload courses and events
+        await loadCourses();
+        await loadEvents();
+      }
+    } catch (error) {
+      console.error('[AppPage] Failed to delete course:', error);
+    }
+  };
+
+  const handleSaveEvent = async (event: CalendarEvent) => {
+    try {
+      const existingEvent = events.find(e => e.id === event.id);
+      
+      if (existingEvent) {
+        // Update existing event
+        const response = await fetch(`/api/events/${event.id}`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ syllabusText }),
-        });
-
-        const data = await response.json();
-        if (data.events && data.events.length > 0) {
-          const maxId = events.length > 0 ? Math.max(...events.map(e => e.id)) : 0;
-          const newEvents = data.events.map((event: any, index: number) => ({
-            id: maxId + index + 1,
+          body: JSON.stringify({
             title: event.title,
-            date: event.date,
             description: event.description || '',
-            courseId: id,
-          }));
-          setEvents(prev => [...prev, ...newEvents]);
-        }
-      } catch (error) {
-        console.error('[AppPage] Failed to parse calendar events:', error);
-      }
-    }
-
-    // Re-parse grades if requested
-    if (parseGrades && syllabusText.trim()) {
-      console.log('[AppPage] Re-parsing grades...');
-      try {
-        const response = await fetch('/api/parse-grades', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ syllabusText }),
+            type: event.type || 'other',
+            date: event.date,
+            courseId: event.courseId,
+            weightPercent: event.weightPercent || null,
+          }),
         });
 
-        const data = await response.json();
-        console.log('[AppPage] Re-parse grade response:', data);
-        
-        if (data.categories && data.categories.length > 0) {
-          updatedCourse.gradeCategories = data.categories.map((cat: any, index: number) => ({
-            id: (index + 1).toString(),
-            name: cat.name,
-            weight: cat.weight,
-            currentScore: 0,
-            isCompleted: false,
-          }));
-          console.log('[AppPage] Updated gradeCategories:', updatedCourse.gradeCategories);
+        if (response.ok) {
+          await loadEvents();
         }
-      } catch (error) {
-        console.error('[AppPage] Failed to parse grade categories:', error);
+      } else {
+        // Create new event
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            events: [{
+              courseId: event.courseId,
+              title: event.title,
+              description: event.description || '',
+              type: event.type || 'other',
+              date: event.date,
+              weightPercent: event.weightPercent || null,
+            }],
+          }),
+        });
+
+        if (response.ok) {
+          await loadEvents();
+        }
       }
-    }
-
-    setCourses(prev => prev.map(c => c.id === id ? updatedCourse : c));
-  };
-
-  const handleDeleteCourse = (id: string) => {
-    setCourses(prev => prev.filter(c => c.id !== id));
-    setEvents(prev => prev.filter(e => e.courseId !== id));
-  };
-
-  const handleSaveEvent = (event: CalendarEvent) => {
-    if (events.find(e => e.id === event.id)) {
-      setEvents(prev => prev.map(e => e.id === event.id ? event : e));
-    } else {
-      setEvents(prev => [...prev, event]);
+    } catch (error) {
+      console.error('[AppPage] Failed to save event:', error);
     }
   };
 
-  const handleDeleteEvent = (id: number) => {
-    setEvents(prev => prev.filter(e => e.id !== id));
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      const response = await fetch(`/api/events/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await loadEvents();
+      }
+    } catch (error) {
+      console.error('[AppPage] Failed to delete event:', error);
+    }
   };
 
-  const handleRemoveAllEvents = () => {
-    if (selectedCourse === 'all') {
-      setEvents([]);
-    } else {
-      setEvents(prev => prev.filter(e => e.courseId !== selectedCourse));
+  const handleRemoveAllEvents = async () => {
+    try {
+      if (selectedCourse === 'all') {
+        // Delete all events for test user
+        const eventsToDelete = events;
+        for (const event of eventsToDelete) {
+          await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
+        }
+      } else {
+        // Delete events for selected course
+        const eventsToDelete = events.filter(e => e.courseId === selectedCourse);
+        for (const event of eventsToDelete) {
+          await fetch(`/api/events/${event.id}`, { method: 'DELETE' });
+        }
+      }
+      
+      await loadEvents();
+    } catch (error) {
+      console.error('[AppPage] Failed to remove all events:', error);
     }
   };
 
@@ -287,32 +510,40 @@ export default function AppPage() {
 
       {/* Main Content */}
       <main className={activeTab === 'calendar' ? 'w-full px-6 py-8' : 'max-w-6xl mx-auto px-6 py-8'}>
-        {activeTab === 'courses' && (
-          <YourCourses
-            courses={courses}
-            onAddCourse={handleAddCourse}
-            onEditCourse={handleEditCourse}
-            onDeleteCourse={handleDeleteCourse}
-            usedColors={usedColors}
-          />
-        )}
-
-        {activeTab === 'calendar' && (
-          <div className="max-w-7xl mx-auto">
-            <Calendar
-              events={events}
-              courses={courses}
-              selectedCourse={selectedCourse}
-              onCourseFilterChange={setSelectedCourse}
-              onEditEvent={(event) => setEventModal({ event })}
-              onDeleteEvent={handleDeleteEvent}
-              onAddEvent={(date) => setEventModal({ date })}
-              onRemoveAllEvents={handleRemoveAllEvents}
-            />
+        {loading || !authenticated ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-neutral-600">Loading...</div>
           </div>
-        )}
+        ) : (
+          <>
+            {activeTab === 'courses' && (
+              <YourCourses
+                courses={courses}
+                onAddCourse={handleAddCourse}
+                onEditCourse={handleEditCourse}
+                onDeleteCourse={handleDeleteCourse}
+                usedColors={usedColors}
+              />
+            )}
 
-        {activeTab === 'grades' && <GradePlanner courses={courses} />}
+            {activeTab === 'calendar' && (
+              <div className="max-w-7xl mx-auto">
+                <Calendar
+                  events={events}
+                  courses={courses}
+                  selectedCourse={selectedCourse}
+                  onCourseFilterChange={setSelectedCourse}
+                  onEditEvent={(event) => setEventModal({ event })}
+                  onDeleteEvent={handleDeleteEvent}
+                  onAddEvent={(date) => setEventModal({ date })}
+                  onRemoveAllEvents={handleRemoveAllEvents}
+                />
+              </div>
+            )}
+
+            {activeTab === 'grades' && <GradePlanner courses={courses} />}
+          </>
+        )}
       </main>
 
       {/* Event Modal */}

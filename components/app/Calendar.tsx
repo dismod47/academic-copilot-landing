@@ -22,7 +22,7 @@ interface CalendarProps {
   selectedCourse: string;
   onCourseFilterChange: (courseId: string) => void;
   onEditEvent: (event: CalendarEvent) => void;
-  onDeleteEvent: (id: number) => void;
+  onDeleteEvent: (id: string) => void;
   onAddEvent: (date: string) => void;
   onRemoveAllEvents: () => void;
 }

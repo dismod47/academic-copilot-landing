@@ -8,7 +8,7 @@ interface EventModalProps {
   date?: string;
   courses: Course[];
   onSave: (event: CalendarEvent) => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: string) => void;
   onClose: () => void;
 }
 
@@ -49,11 +49,12 @@ export default function EventModal({
     e.preventDefault();
     
     const eventData: CalendarEvent = {
-      id: event?.id || Date.now(),
+      id: event?.id || `temp-${Date.now()}`,
       title: formData.title,
       date: formData.date,
       description: formData.description,
       courseId: formData.courseId,
+      type: 'other',
     };
 
     onSave(eventData);

@@ -44,6 +44,17 @@ export default function GradePlanner({ courses }: GradePlannerProps) {
           },
         ]);
       }
+    } else {
+      // Reset to default when no course selected
+      setCategories([
+        {
+          id: '1',
+          name: 'Homework',
+          weight: 20,
+          currentScore: 0,
+          isCompleted: false,
+        },
+      ]);
     }
   }, [selectedCourse, courses]);
 

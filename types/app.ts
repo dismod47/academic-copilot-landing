@@ -8,11 +8,13 @@ export interface Course {
 }
 
 export interface CalendarEvent {
-  id: number;
+  id: string;
   title: string;
   date: string;
   description?: string;
   courseId: string;
+  type?: string;
+  weightPercent?: number;
 }
 
 export interface GradeCategory {
