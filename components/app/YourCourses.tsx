@@ -52,7 +52,7 @@ export default function YourCourses({
         name: course.name,
         code: course.code,
         color: course.color,
-        syllabusText: course.syllabusText,
+        syllabusText: course.syllabusText || '',
         syllabusFile: null,
         parseCalendar: false,
         parseGrades: false,
