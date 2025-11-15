@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   startOfWeek, 
   endOfWeek, 
@@ -18,6 +18,7 @@ interface StudyRecommendationsProps {
 }
 
 interface StudyRecommendation {
+  id: string; // event id + date for unique key
   courseName: string;
   topic: string;
   priority: number;
@@ -26,12 +27,39 @@ interface StudyRecommendation {
   eventDate: Date;
   eventType: string;
   weightPercent?: number;
+  eventId: string;
 }
 
 export default function StudyRecommendations({ events, courses }: StudyRecommendationsProps) {
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 0 });
   const weekEnd = endOfWeek(today, { weekStartsOn: 0 });
+  
+  // Load custom study hours from localStorage
+  const [customHours, setCustomHours] = useState<Record<string, number>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('study-hours-customizations');
+      if (saved) {
+        setCustomHours(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Failed to load custom study hours:', error);
+    }
+  }, []);
+
+  const saveCustomHours = (id: string, hours: number) => {
+    const updated = { ...customHours, [id]: hours };
+    setCustomHours(updated);
+    try {
+      localStorage.setItem('study-hours-customizations', JSON.stringify(updated));
+    } catch (error) {
+      console.error('Failed to save custom study hours:', error);
+    }
+  };
   
   // Get events for this week and next week (14 days ahead)
   const upcomingEvents = useMemo(() => {
@@ -139,15 +167,23 @@ export default function StudyRecommendations({ events, courses }: StudyRecommend
         recommendedHours += 0.5;
       }
       
+      const recommendationId = `${event.id}-${event.date}`;
+      const baseHours = Math.round(recommendedHours * 2) / 2; // Round to nearest 0.5
+      const finalHours = customHours[recommendationId] !== undefined 
+        ? customHours[recommendationId] 
+        : baseHours;
+
       recs.push({
+        id: recommendationId,
         courseName,
         topic: event.title,
         priority,
-        recommendedHours: Math.round(recommendedHours * 2) / 2, // Round to nearest 0.5
+        recommendedHours: finalHours,
         reason,
         eventDate,
         eventType: event.type || 'other',
         weightPercent: event.weightPercent,
+        eventId: event.id,
       });
     });
 
@@ -158,7 +194,7 @@ export default function StudyRecommendations({ events, courses }: StudyRecommend
       }
       return a.eventDate.getTime() - b.eventDate.getTime();
     });
-  }, [upcomingEvents, courses, today]);
+  }, [upcomingEvents, courses, today, customHours]);
 
   // Calculate total recommended hours
   const totalHours = useMemo(() => {
@@ -287,8 +323,8 @@ export default function StudyRecommendations({ events, courses }: StudyRecommend
                   <p className="text-sm text-neutral-700 mb-1">{rec.courseName}</p>
                   <p className="text-xs text-neutral-600">{rec.reason}</p>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <div className={`px-3 py-1 rounded text-xs font-medium mb-1 ${
+                <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
+                  <div className={`px-3 py-1 rounded text-xs font-medium ${
                     rec.priority >= 8 
                       ? 'bg-red-200 text-red-900' 
                       : rec.priority >= 6
@@ -297,16 +333,71 @@ export default function StudyRecommendations({ events, courses }: StudyRecommend
                   }`}>
                     {getPriorityLabel(rec.priority)}
                   </div>
-                  <div className="text-lg font-bold text-neutral-900">
-                    {rec.recommendedHours}h
-                  </div>
+                  {editingId === rec.id ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        min="0"
+                        max="20"
+                        step="0.5"
+                        className="w-16 px-2 py-1 border border-neutral-300 rounded text-sm text-neutral-900"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const hours = parseFloat(editValue);
+                            if (!isNaN(hours) && hours >= 0 && hours <= 20) {
+                              saveCustomHours(rec.id, hours);
+                              setEditingId(null);
+                              setEditValue('');
+                            }
+                          } else if (e.key === 'Escape') {
+                            setEditingId(null);
+                            setEditValue('');
+                          }
+                        }}
+                        onBlur={() => {
+                          const hours = parseFloat(editValue);
+                          if (!isNaN(hours) && hours >= 0 && hours <= 20) {
+                            saveCustomHours(rec.id, hours);
+                          }
+                          setEditingId(null);
+                          setEditValue('');
+                        }}
+                      />
+                      <span className="text-sm text-neutral-600">h</span>
+                    </div>
+                  ) : (
+                    <div className="text-lg font-bold text-neutral-900">
+                      {rec.recommendedHours}h
+                    </div>
+                  )}
+                  {!editingId && (
+                    <button
+                      onClick={() => {
+                        setEditingId(rec.id);
+                        setEditValue(rec.recommendedHours.toString());
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-neutral-600">
-                <span>📅 {format(rec.eventDate, 'MMM d, yyyy')}</span>
-                {index === 0 && (
-                  <span className="px-2 py-0.5 bg-yellow-200 text-yellow-900 rounded font-medium">
-                    Start here
+              <div className="flex items-center justify-between text-xs text-neutral-600">
+                <div className="flex items-center gap-2">
+                  <span>📅 {format(rec.eventDate, 'MMM d, yyyy')}</span>
+                  {index === 0 && (
+                    <span className="px-2 py-0.5 bg-yellow-200 text-yellow-900 rounded font-medium">
+                      Start here
+                    </span>
+                  )}
+                </div>
+                {customHours[rec.id] !== undefined && (
+                  <span className="text-neutral-500 italic">
+                    Customized
                   </span>
                 )}
               </div>
