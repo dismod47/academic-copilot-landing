@@ -17,34 +17,37 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
 
-    const where: any = {
-      OR: [
-        // Events with courses owned by user
-        {
-          course: {
-            userId: user.id,
-          },
-        },
-        // Events without courses (Other events)
-        {
-          courseId: null,
-        },
-      ],
-    };
+    let where: any;
 
     if (courseId && courseId !== 'all') {
       if (courseId === 'other') {
-        where.AND = [{ courseId: null }];
+        // Filter for events without a course (Other events)
+        where = { courseId: null };
       } else {
-        where.AND = [
-          { courseId: courseId },
+        // Filter for events with a specific course owned by user
+        where = {
+          courseId: courseId,
+          course: {
+            userId: user.id,
+          },
+        };
+      }
+    } else {
+      // Get all events: events with courses owned by user OR events without courses (Other)
+      where = {
+        OR: [
+          // Events with courses owned by user
           {
             course: {
               userId: user.id,
             },
           },
-        ];
-      }
+          // Events without courses (Other events)
+          {
+            courseId: null,
+          },
+        ],
+      };
     }
 
     const events = await prisma.event.findMany({

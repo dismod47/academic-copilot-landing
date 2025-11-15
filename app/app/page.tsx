@@ -456,16 +456,18 @@ export default function AppPage() {
           }),
         });
 
+        const responseData = await response.json();
+        
         if (response.ok) {
           await loadEvents();
         } else {
-          const errorData = await response.json();
-          console.error('[AppPage] Failed to create event:', errorData);
-          alert(`Failed to create event: ${errorData.error || 'Unknown error'}`);
+          console.error('[AppPage] Failed to create event:', responseData);
+          alert(`Failed to create event: ${responseData.error || 'Unknown error'}`);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[AppPage] Failed to save event:', error);
+      alert(`Failed to save event: ${error?.message || 'Unknown error'}`);
     }
   };
 
