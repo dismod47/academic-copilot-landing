@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     // Fetch created categories
     const gradeCategories = await prisma.gradeCategory.findMany({
       where: { courseId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { id: 'asc' },
     });
 
     return NextResponse.json({ gradeCategories }, { status: 201 });
