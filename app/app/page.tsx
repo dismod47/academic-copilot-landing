@@ -611,7 +611,7 @@ export default function AppPage() {
       </main>
 
       {/* Event Modal */}
-      {eventModal && (
+      {eventModal && (eventModal.date || eventModal.event) && (
         <EventModal
           event={eventModal.event ?? null}
           date={eventModal.date}
