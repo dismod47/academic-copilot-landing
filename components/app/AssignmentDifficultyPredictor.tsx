@@ -39,11 +39,20 @@ export default function AssignmentDifficultyPredictor() {
     try {
       const response = await fetch('/api/assignment-analyses');
       const data = await response.json();
-      if (response.ok && data.analyses) {
+      
+      if (!response.ok) {
+        console.error('[AssignmentDifficultyPredictor] Failed to load saved analyses:', data.error || 'Unknown error');
+        setError(data.error || 'Failed to load saved analyses');
+        return;
+      }
+      
+      if (data.analyses) {
+        console.log('[AssignmentDifficultyPredictor] Loaded saved analyses:', data.analyses.length);
         setSavedAnalyses(data.analyses);
       }
     } catch (err) {
-      console.error('Failed to load saved analyses:', err);
+      console.error('[AssignmentDifficultyPredictor] Error loading saved analyses:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load saved analyses');
     }
   };
 
@@ -83,6 +92,7 @@ export default function AssignmentDifficultyPredictor() {
 
   const handleSave = async () => {
     if (!analysis || !assignmentPrompt.trim()) {
+      setError('No analysis to save');
       return;
     }
 
@@ -90,33 +100,44 @@ export default function AssignmentDifficultyPredictor() {
     setError(null);
 
     try {
+      const saveData = {
+        assignmentPrompt,
+        difficulty: analysis.difficulty,
+        estimatedTime: analysis.estimatedTime,
+        keyConcepts: analysis.keyConcepts,
+        suggestedSteps: analysis.suggestedSteps,
+        quickStartOutline: analysis.quickStartOutline,
+      };
+
+      console.log('[AssignmentDifficultyPredictor] Saving analysis:', saveData);
+
       const response = await fetch('/api/assignment-analyses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          assignmentPrompt,
-          ...analysis,
-        }),
+        body: JSON.stringify(saveData),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('[AssignmentDifficultyPredictor] Save failed:', data.error);
         throw new Error(data.error || 'Failed to save analysis');
       }
+
+      console.log('[AssignmentDifficultyPredictor] Analysis saved successfully:', data.analysis);
 
       // Reload saved analyses
       await loadSavedAnalyses();
       
-      // Show success message briefly
-      const successMsg = 'Analysis saved successfully!';
+      // Clear error state
       setError(null);
       
-      // You could add a toast notification here if needed
-      alert(successMsg);
+      // Show success message
+      alert('Analysis saved successfully!');
     } catch (err) {
+      console.error('[AssignmentDifficultyPredictor] Error saving analysis:', err);
       setError(err instanceof Error ? err.message : 'Failed to save analysis');
     } finally {
       setSaving(false);

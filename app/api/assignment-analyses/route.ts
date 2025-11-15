@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('[assignment-analyses] Fetching analyses for user:', user.id);
+
     const analyses = await prisma.assignmentAnalysis.findMany({
       where: {
         userId: user.id,
@@ -19,11 +21,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    console.log('[assignment-analyses] Found', analyses.length, 'analyses for user');
+
     return NextResponse.json({ analyses });
   } catch (error) {
     console.error('[assignment-analyses] GET Error:', error);
+    console.error('[assignment-analyses] Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
-      { error: 'Failed to fetch analyses' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch analyses' },
       { status: 500 }
     );
   }
@@ -46,6 +51,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('[assignment-analyses] Saving analysis for user:', user.id);
+    console.log('[assignment-analyses] Analysis data:', {
+      assignmentPrompt: assignmentPrompt.substring(0, 50) + '...',
+      difficulty,
+      estimatedTime,
+      keyConceptsCount: keyConcepts?.length || 0,
+      suggestedStepsCount: suggestedSteps?.length || 0,
+    });
+
     const analysis = await prisma.assignmentAnalysis.create({
       data: {
         userId: user.id,
@@ -58,11 +72,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log('[assignment-analyses] Analysis saved successfully with ID:', analysis.id);
+
     return NextResponse.json({ analysis });
   } catch (error) {
     console.error('[assignment-analyses] POST Error:', error);
+    console.error('[assignment-analyses] Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
-      { error: 'Failed to save analysis' },
+      { error: error instanceof Error ? error.message : 'Failed to save analysis' },
       { status: 500 }
     );
   }
