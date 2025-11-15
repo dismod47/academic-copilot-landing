@@ -318,7 +318,7 @@ export default function AppPage() {
       {/* Event Modal */}
       {eventModal && (
         <EventModal
-          event={eventModal.event}
+          event={eventModal.event ?? null}
           date={eventModal.date}
           courses={courses}
           onSave={handleSaveEvent}
