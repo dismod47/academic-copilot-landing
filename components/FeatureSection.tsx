@@ -10,6 +10,7 @@ interface FeatureSectionProps {
   description: string;
   illustration: React.ReactNode;
   reverse?: boolean;
+  id?: string;
 }
 
 export default function FeatureSection({
@@ -17,12 +18,13 @@ export default function FeatureSection({
   description,
   illustration,
   reverse = false,
+  id,
 }: FeatureSectionProps) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
 
   return (
-    <section ref={ref} className="max-w-6xl mx-auto px-6 py-16">
+    <section ref={ref} id={id} className="max-w-6xl mx-auto px-6 py-16">
       <div
         className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${
           reverse ? 'lg:grid-flow-dense' : ''

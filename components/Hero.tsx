@@ -1,7 +1,16 @@
+'use client';
+
 import React from 'react';
 import AnimatedPreview from './AnimatedPreview';
 
 export default function Hero() {
+  const scrollToFeatures = () => {
+    const firstFeature = document.getElementById('syllabus-calendar-section');
+    if (firstFeature) {
+      firstFeature.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <section className="max-w-6xl mx-auto px-6 py-16">
       <div className="relative">
@@ -29,16 +38,19 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Centered CTA Button - positioned between columns on desktop */}
-        <div className="flex justify-center lg:absolute lg:top-1/2 lg:left-1/2 lg:transform lg:-translate-x-1/2 lg:-translate-y-1/2 lg:z-10 mt-8 lg:mt-0">
-          <button className="px-8 py-4 bg-neutral-100 text-neutral-900 rounded-lg font-medium shadow-lg hover:bg-neutral-200 hover:shadow-xl transition-all duration-200 border border-neutral-200">
-            See how it works
-          </button>
-        </div>
-
         {/* Mobile preview - shows below button on mobile */}
         <div className="lg:hidden mt-8">
           <AnimatedPreview />
+        </div>
+
+        {/* CTA Button - positioned below the grid */}
+        <div className="flex justify-center mt-12">
+          <button 
+            onClick={scrollToFeatures}
+            className="px-8 py-4 bg-neutral-100 text-neutral-900 rounded-lg font-medium shadow-lg hover:bg-neutral-200 hover:shadow-xl transition-all duration-200 border border-neutral-200"
+          >
+            See how it works
+          </button>
         </div>
       </div>
     </section>

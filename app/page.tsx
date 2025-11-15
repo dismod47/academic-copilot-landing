@@ -18,6 +18,7 @@ export default function Home() {
         {/* Feature Sections with alternating layout */}
         <div className="py-8">
           <FeatureSection
+            id="syllabus-calendar-section"
             title="Syllabus → Calendar automation"
             description="Upload your syllabus and instantly generate a clean, color-coded calendar for your entire semester."
             illustration={<SyllabusCalendarIllustration />}
