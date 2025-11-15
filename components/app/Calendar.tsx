@@ -82,6 +82,8 @@ export default function Calendar({
   const handleRemoveAll = () => {
     const courseName = selectedCourse === 'all' 
       ? 'all courses' 
+      : selectedCourse === 'other'
+      ? 'other events'
       : courses.find(c => c.id === selectedCourse)?.name || 'this course';
     
     const confirmed = window.confirm(
