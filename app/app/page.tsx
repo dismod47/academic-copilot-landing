@@ -633,7 +633,7 @@ export default function AppPage() {
               </div>
             )}
 
-            {activeTab === 'grades' && <GradePlanner courses={courses} />}
+            {activeTab === 'grades' && <GradePlanner />}
 
             {activeTab === 'difficulty' && <AssignmentDifficultyPredictor />}
           </>
