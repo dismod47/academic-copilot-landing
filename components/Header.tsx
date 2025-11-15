@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 export default function Header() {
   return (
@@ -12,9 +13,11 @@ export default function Header() {
             <span className="text-sm text-neutral-700 cursor-pointer hover:text-neutral-900">
               FREE TRIAL
             </span>
-            <button className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-900 text-sm font-medium shadow-sm hover:bg-white transition-colors">
-              SIGN IN
-            </button>
+            <Link href="/app">
+              <button className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-900 text-sm font-medium shadow-sm hover:bg-white transition-colors">
+                SIGN IN
+              </button>
+            </Link>
           </div>
         </div>
       </div>
