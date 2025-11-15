@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AppHeader from '@/components/app/AppHeader';
 import YourCourses from '@/components/app/YourCourses';
 import Calendar from '@/components/app/Calendar';
+import WeeklyTodoList from '@/components/app/WeeklyTodoList';
 import GradePlanner from '@/components/app/GradePlanner';
 import AssignmentDifficultyPredictor from '@/components/app/AssignmentDifficultyPredictor';
 import EventModal from '@/components/app/EventModal';
@@ -616,7 +617,7 @@ export default function AppPage() {
             )}
 
             {activeTab === 'calendar' && (
-              <div className="max-w-7xl mx-auto">
+              <div className="max-w-7xl mx-auto space-y-6">
                 <Calendar
                   events={events}
                   courses={courses}
@@ -630,6 +631,7 @@ export default function AppPage() {
                   }}
                   onRemoveAllEvents={handleRemoveAllEvents}
                 />
+                <WeeklyTodoList events={events} courses={courses} />
               </div>
             )}
 
